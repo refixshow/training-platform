@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature-Sliced Architecture"
+  short_description: "Use pragmatic Feature-Sliced Design without over-slicing."
+  default_prompt: "Use this skill to structure React and TypeScript code with pragmatic Feature-Sliced Design: pages first, shared code within limits, public APIs, no over-slicing, and ask the programmer before deciding ambiguous sharing boundaries."

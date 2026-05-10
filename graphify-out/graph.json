@@ -1,0 +1,250 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "vite.config.ts",
+      "file_type": "code",
+      "source_file": "vite.config.ts",
+      "source_location": "L1",
+      "id": "vite_config_ts",
+      "community": 4,
+      "norm_label": "vite.config.ts"
+    },
+    {
+      "label": "vitest.config.ts",
+      "file_type": "code",
+      "source_file": "vitest.config.ts",
+      "source_location": "L1",
+      "id": "vitest_config_ts",
+      "community": 5,
+      "norm_label": "vitest.config.ts"
+    },
+    {
+      "label": "schema.ts",
+      "file_type": "code",
+      "source_file": "convex\\schema.ts",
+      "source_location": "L1",
+      "id": "convex_schema_ts",
+      "community": 6,
+      "norm_label": "schema.ts"
+    },
+    {
+      "label": "router.tsx",
+      "file_type": "code",
+      "source_file": "src\\router.tsx",
+      "source_location": "L1",
+      "id": "src_router_tsx",
+      "community": 0,
+      "norm_label": "router.tsx"
+    },
+    {
+      "label": "getRouter()",
+      "file_type": "code",
+      "source_file": "src\\router.tsx",
+      "source_location": "L9",
+      "id": "src_router_getrouter",
+      "community": 0,
+      "norm_label": "getrouter()"
+    },
+    {
+      "label": "routeTree.gen.ts",
+      "file_type": "code",
+      "source_file": "src\\routeTree.gen.ts",
+      "source_location": "L1",
+      "id": "src_routetree_gen_ts",
+      "community": 0,
+      "norm_label": "routetree.gen.ts"
+    },
+    {
+      "label": "index.tsx",
+      "file_type": "code",
+      "source_file": "src\\routes\\index.tsx",
+      "source_location": "L1",
+      "id": "src_routes_index_tsx",
+      "community": 3,
+      "norm_label": "index.tsx"
+    },
+    {
+      "label": "Home()",
+      "file_type": "code",
+      "source_file": "src\\routes\\index.tsx",
+      "source_location": "L7",
+      "id": "routes_index_home",
+      "community": 3,
+      "norm_label": "home()"
+    },
+    {
+      "label": "__root.tsx",
+      "file_type": "code",
+      "source_file": "src\\routes\\__root.tsx",
+      "source_location": "L1",
+      "id": "src_routes_root_tsx",
+      "community": 7,
+      "norm_label": "__root.tsx"
+    },
+    {
+      "label": "cn.ts",
+      "file_type": "code",
+      "source_file": "src\\shared\\lib\\cn\\cn.ts",
+      "source_location": "L1",
+      "id": "src_shared_lib_cn_cn_ts",
+      "community": 1,
+      "norm_label": "cn.ts"
+    },
+    {
+      "label": "cn()",
+      "file_type": "code",
+      "source_file": "src\\shared\\lib\\cn\\cn.ts",
+      "source_location": "L4",
+      "id": "cn_cn_cn",
+      "community": 1,
+      "norm_label": "cn()"
+    },
+    {
+      "label": "index.ts",
+      "file_type": "code",
+      "source_file": "src\\shared\\lib\\cn\\index.ts",
+      "source_location": "L1",
+      "id": "src_shared_lib_cn_index_ts",
+      "community": 8,
+      "norm_label": "index.ts"
+    },
+    {
+      "label": "button.tsx",
+      "file_type": "code",
+      "source_file": "src\\shared\\ui\\button\\button.tsx",
+      "source_location": "L1",
+      "id": "src_shared_ui_button_button_tsx",
+      "community": 2,
+      "norm_label": "button.tsx"
+    },
+    {
+      "label": "Button()",
+      "file_type": "code",
+      "source_file": "src\\shared\\ui\\button\\button.tsx",
+      "source_location": "L4",
+      "id": "button_button_button",
+      "community": 2,
+      "norm_label": "button()"
+    },
+    {
+      "label": "button.types.ts",
+      "file_type": "code",
+      "source_file": "src\\shared\\ui\\button\\button.types.ts",
+      "source_location": "L1",
+      "id": "src_shared_ui_button_button_types_ts",
+      "community": 9,
+      "norm_label": "button.types.ts"
+    },
+    {
+      "label": "button.variants.ts",
+      "file_type": "code",
+      "source_file": "src\\shared\\ui\\button\\button.variants.ts",
+      "source_location": "L1",
+      "id": "src_shared_ui_button_button_variants_ts",
+      "community": 10,
+      "norm_label": "button.variants.ts"
+    },
+    {
+      "label": "index.ts",
+      "file_type": "code",
+      "source_file": "src\\shared\\ui\\button\\index.ts",
+      "source_location": "L1",
+      "id": "src_shared_ui_button_index_ts",
+      "community": 11,
+      "norm_label": "index.ts"
+    },
+    {
+      "label": "index.ts",
+      "file_type": "code",
+      "source_file": "src\\widgets\\app-overview\\index.ts",
+      "source_location": "L1",
+      "id": "src_widgets_app_overview_index_ts",
+      "community": 12,
+      "norm_label": "index.ts"
+    },
+    {
+      "label": "app-overview.constants.ts",
+      "file_type": "code",
+      "source_file": "src\\widgets\\app-overview\\ui\\app-overview.constants.ts",
+      "source_location": "L1",
+      "id": "src_widgets_app_overview_ui_app_overview_constants_ts",
+      "community": 13,
+      "norm_label": "app-overview.constants.ts"
+    },
+    {
+      "label": "app-overview.tsx",
+      "file_type": "code",
+      "source_file": "src\\widgets\\app-overview\\ui\\app-overview.tsx",
+      "source_location": "L1",
+      "id": "src_widgets_app_overview_ui_app_overview_tsx",
+      "community": 14,
+      "norm_label": "app-overview.tsx"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\router.tsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_src": "src_router_tsx",
+      "_tgt": "src_router_getrouter",
+      "source": "src_router_tsx",
+      "target": "src_router_getrouter",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\routeTree.gen.ts",
+      "source_location": "L61",
+      "weight": 1.0,
+      "_src": "src_routetree_gen_ts",
+      "_tgt": "src_router_tsx",
+      "source": "src_router_tsx",
+      "target": "src_routetree_gen_ts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\routes\\index.tsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_src": "src_routes_index_tsx",
+      "_tgt": "routes_index_home",
+      "source": "src_routes_index_tsx",
+      "target": "routes_index_home",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\shared\\lib\\cn\\cn.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_src": "src_shared_lib_cn_cn_ts",
+      "_tgt": "cn_cn_cn",
+      "source": "src_shared_lib_cn_cn_ts",
+      "target": "cn_cn_cn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src\\shared\\ui\\button\\button.tsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_src": "src_shared_ui_button_button_tsx",
+      "_tgt": "button_button_button",
+      "source": "src_shared_ui_button_button_tsx",
+      "target": "button_button_button",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": []
+}

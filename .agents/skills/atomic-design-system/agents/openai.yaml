@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atomic Design System"
+  short_description: "Build Atomic Design components with token and variant APIs."
+  default_prompt: "Use this skill to structure a React design system with Atomic Design, typed variants, no public className escape hatches, and small files split by types, utils, constants, and components."

@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: oklch(98% 0.006 96);
+  --color-foreground: oklch(22% 0.018 245);
+  --color-card: oklch(99% 0.004 96);
+  --color-card-foreground: oklch(22% 0.018 245);
+  --color-popover: oklch(99% 0.004 96);
+  --color-popover-foreground: oklch(22% 0.018 245);
+  --color-primary: oklch(52% 0.17 151);
+  --color-primary-foreground: oklch(98% 0.006 96);
+  --color-secondary: oklch(92% 0.035 230);
+  --color-secondary-foreground: oklch(28% 0.045 245);
+  --color-muted: oklch(94% 0.012 96);
+  --color-muted-foreground: oklch(48% 0.02 245);
+  --color-accent: oklch(92% 0.055 151);
+  --color-accent-foreground: oklch(24% 0.05 151);
+  --color-destructive: oklch(58% 0.18 25);
+  --color-destructive-foreground: oklch(98% 0.006 96);
+  --color-border: oklch(88% 0.014 96);
+  --color-input: oklch(88% 0.014 96);
+  --color-ring: oklch(52% 0.17 151);
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
