@@ -15,3 +15,5 @@ __unconfig*
 todos.json
 dev-server*.log
 coaching-platform-home*.png
+graphify-out
+tmp-browser-checks

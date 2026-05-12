@@ -2,12 +2,13 @@ import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { QueryClient } from '@tanstack/react-query'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { ConvexQueryClient } from '@convex-dev/react-query'
-import { ConvexProvider } from 'convex/react'
+import { ConvexAuthProvider } from '@convex-dev/auth/react'
 
 import { routeTree } from './routeTree.gen'
+import { getConfiguredConvexUrl } from './shared/lib/convex-env'
 
 export function getRouter() {
-  const convexUrl = import.meta.env.VITE_CONVEX_URL
+  const convexUrl = getConfiguredConvexUrl()
   const convexQueryClient = convexUrl
     ? new ConvexQueryClient(convexUrl)
     : undefined
@@ -33,9 +34,9 @@ export function getRouter() {
     context: { queryClient },
     Wrap: ({ children }) =>
       convexQueryClient ? (
-        <ConvexProvider client={convexQueryClient.convexClient}>
+        <ConvexAuthProvider client={convexQueryClient.convexClient}>
           {children}
-        </ConvexProvider>
+        </ConvexAuthProvider>
       ) : (
         children
       ),

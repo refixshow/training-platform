@@ -127,7 +127,7 @@ This file is currently a seed. Re-run `impeccable document` after real UI exists
 
 ### FEATURES.md
 
-Functional product scope.
+Functional product scope. Keep this file strategic and compact. Do not add detailed implementation plans, per-feature DSLs, task breakdowns, or long resolved-decision logs here.
 
 Read this before implementing product behavior. It defines:
 
@@ -137,6 +137,21 @@ Read this before implementing product behavior. It defines:
 - Later features.
 - Trainee and coach UX requirements.
 - Open product decisions.
+
+### docs/features/
+
+Detailed feature specs and implementation plans.
+
+Use this folder for feature-builder style documents, including:
+
+- Feature DSL.
+- Implementation plan.
+- UX states.
+- Data contracts.
+- Architecture boundaries.
+- Test checklist.
+
+Prefer adding or updating one focused file in `docs/features/` over expanding `FEATURES.md`.
 
 ### TECH.md
 
@@ -170,6 +185,18 @@ If `graphify-out/` does not exist yet, continue with normal code search and ment
 ## Local Skills
 
 Local project skills live in `.agents/skills`.
+
+### feature-builder
+
+Use when building complete product features, page flows, dashboards, CRUD surfaces, route-level pages, backend-backed UI, or full-stack vertical slices.
+
+Important rules:
+
+- Read `PRODUCT.md`, `DESIGN.md`, `FEATURES.md`, and `TECH.md` before product, UX, design, or architecture decisions.
+- Use this skill as an orchestrator with `impeccable`, `feature-sliced-architecture`, `atomic-design-system`, and Convex skills instead of duplicating them.
+- Load the relevant reference in `.agents/skills/feature-builder/references/` for page flows, feature slices, backend capabilities, artifact contracts, and definition of done.
+- For non-trivial features, keep lightweight feature-local docs near the owning slice, usually `src/features/<feature-name>/_docs/` with `spec.md`, optional `design.md`, `tasks.md`, and ADRs only for durable decisions.
+- Ask the programmer before resolving open product decisions or ambiguous architecture boundaries.
 
 ### impeccable
 
@@ -255,15 +282,21 @@ Do not over-slice early. Single-use code can stay local until reuse or complexit
 
 Ask the programmer before deciding:
 
-- Whether admin is a separate role or coach permission.
 - Whether assigned programs are snapshots or live references.
 - Whether trainees can edit submitted training results.
 - Whether progress photos are visible to coaches by default.
 - Where bodyweight should be stored.
-- Whether exercise videos are links only or uploads in MVP.
 - Ambiguous feature-sliced boundaries.
 - Moving code into `shared`.
 - Adding strict architecture lint rules.
+
+Resolved MVP product decisions:
+
+- Admin capabilities are part of the coach role for MVP. Split admin into a separate role only after the programmer asks for that boundary.
+- Public/self-service account creation always creates a trainee account. Coach/admin roles are assigned manually in the database for now; do not expose a role selector in signup UI or trust a client-provided signup role.
+- Exercise videos are links only for MVP.
+- Exercise photos and optional media fields should not block exercise creation in MVP.
+- Detailed feature specs live in `docs/features/`; keep `FEATURES.md` compact and strategic.
 
 <!-- convex-ai-start -->
 

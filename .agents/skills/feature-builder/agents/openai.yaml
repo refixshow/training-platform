@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Builder"
+  short_description: "Build product features end-to-end."
+  default_prompt: "Use $feature-builder to build a complete product feature in this repo."

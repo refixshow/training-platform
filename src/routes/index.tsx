@@ -1,9 +1,25 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Navigate, createFileRoute } from '@tanstack/react-router'
+import { useQuery } from 'convex/react'
 
-import { AppOverview } from '#/widgets/app-overview'
+import { TraineeDashboard } from '#/widgets/trainee-dashboard'
+import { api } from '../../convex/_generated/api'
 
 export const Route = createFileRoute('/')({ component: Home })
 
 function Home() {
-  return <AppOverview />
+  if (import.meta.env.VITE_CONVEX_URL) {
+    return <RoleAwareHome />
+  }
+
+  return <Navigate search={{ clientId: undefined }} to="/clients" />
+}
+
+function RoleAwareHome() {
+  const user = useQuery(api.auth.currentUser)
+
+  if (user?.role === 'trainee') {
+    return <TraineeDashboard />
+  }
+
+  return <Navigate search={{ clientId: undefined }} to="/clients" />
 }

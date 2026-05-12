@@ -44,7 +44,7 @@ An admin can:
 - Manage shared exercise taxonomy and system-level data.
 - Support coach-side setup where needed.
 
-Admin may be a separate role or a permission level assigned to coaches. This should be decided during implementation.
+For MVP, admin capabilities are handled by the coach role. Admin may become a separate role later, but do not split it before the product explicitly needs that boundary.
 
 ## Core Data Models
 
@@ -52,14 +52,14 @@ Admin may be a separate role or a permission level assigned to coaches. This sho
 
 An exercise includes:
 
-- Photo.
 - Name.
 - Type.
 - Equipment.
 - Primary muscle group.
 - Secondary muscle groups.
 - Instructions as a numbered list.
-- Video, either uploaded or linked.
+- Optional photo.
+- Optional video link.
 
 #### Exercise Types
 
@@ -182,8 +182,8 @@ Activities power:
 ### MVP
 
 - Create, edit, delete, and view exercises.
-- Upload or attach an exercise photo.
-- Add a video link.
+- Optionally upload or attach an exercise photo.
+- Optionally add a video link.
 - Choose exercise type.
 - Choose equipment.
 - Select primary muscle group.
@@ -380,13 +380,12 @@ These features should not block the first version:
 
 ## Open Decisions
 
-- Should admin be a separate role or a coach permission?
 - Should routines be scheduled by day, week, or flexible order inside a program?
 - Should assigned programs be copied into a user-specific snapshot or stay linked to the original program?
 - Should trainees be able to edit submitted training results?
 - Should coaches approve edited results?
 - Should progress photos be visible to coach by default?
 - Should bodyweight be logged independently, attached to photos, attached to training summaries, or all three?
-- Should video support start with links only, or include uploads in MVP?
 - Should activity map use calendar-style intensity, simple completion dots, or both?
+
 

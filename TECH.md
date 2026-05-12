@@ -199,9 +199,9 @@ Auth needs to support:
 
 Role checks must not live only in the UI. Convex queries and mutations should enforce access rules.
 
-Open decision:
+MVP decision:
 
-- Admin can be a separate role or a coach permission. This should be decided before implementing admin-only muscle group management.
+- Admin capabilities are handled by the coach role for now. Keep the implementation simple enough to split admin into a separate role later.
 
 ## Forms and Validation
 
@@ -248,9 +248,9 @@ Charts must stay readable and functional. Avoid decorative charting where a simp
 
 Exercise media:
 
-- Exercise photos are required by the product model.
-- Exercise videos may start as external links.
-- Uploaded videos are a later feature unless explicitly promoted to MVP.
+- Exercise photos are optional in MVP and must not block creating an exercise.
+- Exercise videos are external links only in MVP.
+- Uploaded exercise videos are a later feature unless explicitly promoted to MVP.
 
 Progress photos:
 
@@ -335,9 +335,7 @@ Before a feature is considered done:
 
 - Exact TanStack Start project structure.
 - Convex Auth provider setup.
-- Whether admin is a role or permission.
 - Media upload strategy for exercise photos and progress photos.
-- Whether exercise videos are MVP links only or uploads.
 - Whether assigned programs are snapshots or live references to program templates.
 - Whether bodyweight is stored independently, attached to progress photos, attached to training summaries, or all three.
 - Exact Tailwind token names once colors and typography are implemented.

@@ -9,38 +9,320 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrainingResultsRouteImport } from './routes/training-results'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RoutinesRouteImport } from './routes/routines'
+import { Route as ProgressPhotosRouteImport } from './routes/progress-photos'
+import { Route as ProgramsRouteImport } from './routes/programs'
+import { Route as MyProgramRouteImport } from './routes/my-program'
+import { Route as MuscleGroupsRouteImport } from './routes/muscle-groups'
+import { Route as ExercisesRouteImport } from './routes/exercises'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ClientsRouteImport } from './routes/clients'
+import { Route as AssignmentsRouteImport } from './routes/assignments'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MyProgramTrainingRouteImport } from './routes/my-program_.training'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
 
+const TrainingResultsRoute = TrainingResultsRouteImport.update({
+  id: '/training-results',
+  path: '/training-results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoutinesRoute = RoutinesRouteImport.update({
+  id: '/routines',
+  path: '/routines',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProgressPhotosRoute = ProgressPhotosRouteImport.update({
+  id: '/progress-photos',
+  path: '/progress-photos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProgramsRoute = ProgramsRouteImport.update({
+  id: '/programs',
+  path: '/programs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyProgramRoute = MyProgramRouteImport.update({
+  id: '/my-program',
+  path: '/my-program',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MuscleGroupsRoute = MuscleGroupsRouteImport.update({
+  id: '/muscle-groups',
+  path: '/muscle-groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExercisesRoute = ExercisesRouteImport.update({
+  id: '/exercises',
+  path: '/exercises',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsRoute = ClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssignmentsRoute = AssignmentsRouteImport.update({
+  id: '/assignments',
+  path: '/assignments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyProgramTrainingRoute = MyProgramTrainingRouteImport.update({
+  id: '/my-program_/training',
+  path: '/my-program/training',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsClientIdRoute = ClientsClientIdRouteImport.update({
+  id: '/$clientId',
+  path: '/$clientId',
+  getParentRoute: () => ClientsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
+  '/assignments': typeof AssignmentsRoute
+  '/clients': typeof ClientsRouteWithChildren
+  '/dashboard': typeof DashboardRoute
+  '/exercises': typeof ExercisesRoute
+  '/muscle-groups': typeof MuscleGroupsRoute
+  '/my-program': typeof MyProgramRoute
+  '/programs': typeof ProgramsRoute
+  '/progress-photos': typeof ProgressPhotosRoute
+  '/routines': typeof RoutinesRoute
+  '/settings': typeof SettingsRoute
+  '/training-results': typeof TrainingResultsRoute
+  '/clients/$clientId': typeof ClientsClientIdRoute
+  '/invite/$token': typeof InviteTokenRoute
+  '/my-program/training': typeof MyProgramTrainingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
+  '/assignments': typeof AssignmentsRoute
+  '/clients': typeof ClientsRouteWithChildren
+  '/dashboard': typeof DashboardRoute
+  '/exercises': typeof ExercisesRoute
+  '/muscle-groups': typeof MuscleGroupsRoute
+  '/my-program': typeof MyProgramRoute
+  '/programs': typeof ProgramsRoute
+  '/progress-photos': typeof ProgressPhotosRoute
+  '/routines': typeof RoutinesRoute
+  '/settings': typeof SettingsRoute
+  '/training-results': typeof TrainingResultsRoute
+  '/clients/$clientId': typeof ClientsClientIdRoute
+  '/invite/$token': typeof InviteTokenRoute
+  '/my-program/training': typeof MyProgramTrainingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
+  '/assignments': typeof AssignmentsRoute
+  '/clients': typeof ClientsRouteWithChildren
+  '/dashboard': typeof DashboardRoute
+  '/exercises': typeof ExercisesRoute
+  '/muscle-groups': typeof MuscleGroupsRoute
+  '/my-program': typeof MyProgramRoute
+  '/programs': typeof ProgramsRoute
+  '/progress-photos': typeof ProgressPhotosRoute
+  '/routines': typeof RoutinesRoute
+  '/settings': typeof SettingsRoute
+  '/training-results': typeof TrainingResultsRoute
+  '/clients/$clientId': typeof ClientsClientIdRoute
+  '/invite/$token': typeof InviteTokenRoute
+  '/my-program_/training': typeof MyProgramTrainingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/analytics'
+    | '/assignments'
+    | '/clients'
+    | '/dashboard'
+    | '/exercises'
+    | '/muscle-groups'
+    | '/my-program'
+    | '/programs'
+    | '/progress-photos'
+    | '/routines'
+    | '/settings'
+    | '/training-results'
+    | '/clients/$clientId'
+    | '/invite/$token'
+    | '/my-program/training'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/analytics'
+    | '/assignments'
+    | '/clients'
+    | '/dashboard'
+    | '/exercises'
+    | '/muscle-groups'
+    | '/my-program'
+    | '/programs'
+    | '/progress-photos'
+    | '/routines'
+    | '/settings'
+    | '/training-results'
+    | '/clients/$clientId'
+    | '/invite/$token'
+    | '/my-program/training'
+  id:
+    | '__root__'
+    | '/'
+    | '/analytics'
+    | '/assignments'
+    | '/clients'
+    | '/dashboard'
+    | '/exercises'
+    | '/muscle-groups'
+    | '/my-program'
+    | '/programs'
+    | '/progress-photos'
+    | '/routines'
+    | '/settings'
+    | '/training-results'
+    | '/clients/$clientId'
+    | '/invite/$token'
+    | '/my-program_/training'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnalyticsRoute: typeof AnalyticsRoute
+  AssignmentsRoute: typeof AssignmentsRoute
+  ClientsRoute: typeof ClientsRouteWithChildren
+  DashboardRoute: typeof DashboardRoute
+  ExercisesRoute: typeof ExercisesRoute
+  MuscleGroupsRoute: typeof MuscleGroupsRoute
+  MyProgramRoute: typeof MyProgramRoute
+  ProgramsRoute: typeof ProgramsRoute
+  ProgressPhotosRoute: typeof ProgressPhotosRoute
+  RoutinesRoute: typeof RoutinesRoute
+  SettingsRoute: typeof SettingsRoute
+  TrainingResultsRoute: typeof TrainingResultsRoute
+  InviteTokenRoute: typeof InviteTokenRoute
+  MyProgramTrainingRoute: typeof MyProgramTrainingRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/training-results': {
+      id: '/training-results'
+      path: '/training-results'
+      fullPath: '/training-results'
+      preLoaderRoute: typeof TrainingResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/routines': {
+      id: '/routines'
+      path: '/routines'
+      fullPath: '/routines'
+      preLoaderRoute: typeof RoutinesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/progress-photos': {
+      id: '/progress-photos'
+      path: '/progress-photos'
+      fullPath: '/progress-photos'
+      preLoaderRoute: typeof ProgressPhotosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/programs': {
+      id: '/programs'
+      path: '/programs'
+      fullPath: '/programs'
+      preLoaderRoute: typeof ProgramsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-program': {
+      id: '/my-program'
+      path: '/my-program'
+      fullPath: '/my-program'
+      preLoaderRoute: typeof MyProgramRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/muscle-groups': {
+      id: '/muscle-groups'
+      path: '/muscle-groups'
+      fullPath: '/muscle-groups'
+      preLoaderRoute: typeof MuscleGroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exercises': {
+      id: '/exercises'
+      path: '/exercises'
+      fullPath: '/exercises'
+      preLoaderRoute: typeof ExercisesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients': {
+      id: '/clients'
+      path: '/clients'
+      fullPath: '/clients'
+      preLoaderRoute: typeof ClientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assignments': {
+      id: '/assignments'
+      path: '/assignments'
+      fullPath: '/assignments'
+      preLoaderRoute: typeof AssignmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +330,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/my-program_/training': {
+      id: '/my-program_/training'
+      path: '/my-program/training'
+      fullPath: '/my-program/training'
+      preLoaderRoute: typeof MyProgramTrainingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients/$clientId': {
+      id: '/clients/$clientId'
+      path: '/$clientId'
+      fullPath: '/clients/$clientId'
+      preLoaderRoute: typeof ClientsClientIdRouteImport
+      parentRoute: typeof ClientsRoute
+    }
   }
 }
 
+interface ClientsRouteChildren {
+  ClientsClientIdRoute: typeof ClientsClientIdRoute
+}
+
+const ClientsRouteChildren: ClientsRouteChildren = {
+  ClientsClientIdRoute: ClientsClientIdRoute,
+}
+
+const ClientsRouteWithChildren =
+  ClientsRoute._addFileChildren(ClientsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnalyticsRoute: AnalyticsRoute,
+  AssignmentsRoute: AssignmentsRoute,
+  ClientsRoute: ClientsRouteWithChildren,
+  DashboardRoute: DashboardRoute,
+  ExercisesRoute: ExercisesRoute,
+  MuscleGroupsRoute: MuscleGroupsRoute,
+  MyProgramRoute: MyProgramRoute,
+  ProgramsRoute: ProgramsRoute,
+  ProgressPhotosRoute: ProgressPhotosRoute,
+  RoutinesRoute: RoutinesRoute,
+  SettingsRoute: SettingsRoute,
+  TrainingResultsRoute: TrainingResultsRoute,
+  InviteTokenRoute: InviteTokenRoute,
+  MyProgramTrainingRoute: MyProgramTrainingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
