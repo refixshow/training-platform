@@ -1,11 +1,13 @@
 ---
-name: feature-builder
-description: Use when building, shaping, planning, reviewing, or refactoring complete product features, page flows, dashboards, CRUD surfaces, trainee or coach workflows, backend-backed UI, or full-stack vertical slices in this training platform. Triggers on requests to create a page, feature, flow, MVP slice, form workflow, dashboard section, route, Convex-backed capability, or "Chef/Bolt-style" implementation plan with artifacts, references, and execution contracts. Coordinates product context, design quality, feature-sliced architecture, Atomic Design, TanStack Start, Convex, tests, and verification.
+name: feature-docs-builder
+description: Use when creating or updating feature-local specs, design notes, task plans, ADRs, implementation contracts, or planning artifacts for product features in this training platform. Triggers on requests for feature docs, specs, durable product/architecture context, implementation plans, artifact contracts, feature breakdowns, or AI-ready handoff documents. Prefer docs adjacent to the owning feature/page slice, not global /docs, unless the programmer explicitly asks for a central planning document.
 ---
 
-# Feature Builder
+# Feature Docs Builder
 
-Build complete product features end-to-end for this coaching/training platform. Treat this skill as an orchestrator: load the right project docs, select the needed local skills, make only justified architectural decisions, implement the vertical slice, and verify it.
+Build lightweight, durable feature documentation and implementation contracts for this coaching/training platform. Treat this skill as a documentation/planning companion for feature work, not as the default executor for coding the feature end-to-end.
+
+Do not bias toward global `/docs` or `docs/features/`. Prefer feature-adjacent docs near the owning slice, and create docs only when they preserve decisions, reduce implementation ambiguity, or help future AI/human work.
 
 ## Preflight
 
@@ -26,7 +28,7 @@ Use these local skills when the task touches their territory:
 - `atomic-design-system`: reusable React UI primitives, design-system wrappers, typed variants, token-driven components, or component decomposition.
 - `convex` and related Convex skills: schema, queries, mutations, auth, migrations, authorization, indexes, realtime data, or backend performance.
 
-Do not turn this skill into a substitute for those skills. Use it to coordinate them into a shippable feature.
+Do not turn this skill into a substitute for those skills. Use it to document or plan decisions those skills will implement or verify.
 
 ## Workflow
 
@@ -43,10 +45,10 @@ Do not turn this skill into a substitute for those skills. Use it to coordinate 
    - Artifact-style planning or generator prompt design: `references/artifact-contract.md`.
    - Final checks: `references/definition-of-done.md`.
 3. Identify unclear decisions early. Ask only when the decision is product/architecture-significant and cannot be recovered from repo context.
-4. Implement vertically where possible: route/page, UI states, data access, validation, authorization, and tests/verification should line up.
-5. Keep first implementations close to the owning page or feature until reuse, ownership, or complexity justifies extraction.
-6. Add feature-local documentation only when it helps future AI/human work: requirements, design notes, task checklist, and ADRs for durable decisions.
-7. Verify with the smallest meaningful quality gate, then broaden when the blast radius is larger.
+4. Produce only the docs/artifacts that earn their keep: requirements, design notes, task checklist, ADRs, or execution contracts.
+5. Keep docs beside the owning page or feature once ownership is known, usually `src/features/<feature-name>/_docs/`, `src/widgets/<surface>/_docs/`, or route-adjacent when the route owns the flow.
+6. Use `docs/features/` only when the programmer explicitly asks for a central planning artifact or ownership is not known yet; mark it as temporary and move essential context beside the owning slice once implementation starts.
+7. Keep docs short, traceable, and easy to update in the same turn as behavior changes.
 
 ## Default Product Posture
 
@@ -56,9 +58,9 @@ Do not turn this skill into a substitute for those skills. Use it to coordinate 
 - Avoid Heavycoach branding, neon motivation, generic SaaS pastels, dark-heavy UI, and decorative metrics.
 - Convex authorization is mandatory for role-sensitive data. UI checks are not enough.
 
-## Implementation Contract
+## Documentation Contract
 
-Prefer a concise plan, then real edits. Do not stop at proposals when the request asks for implementation.
+Prefer a concise doc plan, then real doc edits. If the user asks for implementation, write only the feature docs needed to reduce risk, then continue with code using the relevant implementation skills.
 
 For generated plans or prompt-engineering tasks, use the artifact DSL in `references/artifact-contract.md` as the model. For normal Codex repo work, use native tools and file edits instead of emitting XML.
 

@@ -19,6 +19,12 @@ scope:
     - Per-set result fields based on exercise type.
     - RPE, weight, reps, duration, distance, and completion values where applicable.
     - Training duration and optional trainee notes.
+    - Server-backed in-progress training draft saved in Convex.
+    - Resume in-progress draft after refresh, route leave, browser close, or switching device/browser.
+    - Autosave set values, completion state, duration, and notes while the trainee logs the workout.
+    - Draft status feedback for saved, saving, failed, stale, and restored states.
+    - Warning before leaving/reloading when local changes have not reached Convex yet.
+    - Partial training completion where only completed/filled set rows are submitted into the final result.
     - Submit training summary.
     - Create training result on submission.
     - Create training result set rows on submission.
@@ -26,7 +32,7 @@ scope:
     - Derived summary values for duration, sets, and volume where reliable.
     - Trainee result history read contract.
     - Coach review read contract.
-    - Loading, draft-like local state, validation, submit, success, empty, error, and unauthorized states.
+    - Loading, server draft restore, validation, submit, success, empty, error, and unauthorized states.
   include_as_integration:
     - Assigned program view start action.
     - Future trainee dashboard statistics.
@@ -34,7 +40,8 @@ scope:
   exclude:
     - Editing submitted training results until product decision is made.
     - Coach approval workflow until product decision is made.
-    - Offline draft persistence.
+    - Local-only draft persistence as the primary resilience strategy.
+    - Full offline-first mode where the trainee can reliably start and finish a workout without any network connection.
     - Rest timer.
     - Previous result comparison.
     - Inline exercise substitution.
@@ -53,6 +60,8 @@ data:
   created_records:
     - trainingResults
     - trainingResultSetResults
+    - trainingDrafts
+    - trainingDraftSetResults
     - activities
   related_future_records:
     - bodyweightEntries
@@ -95,6 +104,10 @@ architecture:
 - Bodyweight storage is an open product decision. This feature may display a future bodyweight prompt, but should not decide whether bodyweight belongs to training summaries, progress photos, independent entries, or all three.
 - Assigned program persistence is still unresolved. Submission must work with the final snapshot/live assignment model and should store enough historical context to preserve what the trainee actually completed.
 - Activity records are created from submitted training results and power activity maps, weekly duration, weekly sets, and weekly volume.
+- Active workout progress is saved as a Convex-backed training draft in MVP. Do not rely on local React state or localStorage as the authoritative persistence layer.
+- Partial training submission is allowed. A trainee may submit a workout with only some sets completed when the real session was incomplete.
+- Final submitted results stay final in MVP unless the separate edit-submitted-result decision is made later.
+- Skipped-set semantics are still unresolved. Until decided, completed/filled sets should become result rows; untouched sets should remain absent from the submitted result rather than being treated as completed failures.
 
 ## UX Shape
 
@@ -105,10 +118,13 @@ Primary flow:
 1. Trainee opens assigned program.
 2. Trainee starts the current routine or selected routine.
 3. App shows exercises in routine order.
-4. Trainee fills per-set values with fields matched to each exercise type.
-5. Trainee reviews a short training summary.
-6. Trainee submits.
-7. App confirms completion and makes the result available for trainee progress and coach review.
+4. App creates or restores the active Convex draft for this assignment and routine.
+5. Trainee fills per-set values with fields matched to each exercise type.
+6. App autosaves changes to the Convex draft and shows the draft status.
+7. Trainee can leave, refresh, or return later and continue from the restored draft.
+8. Trainee reviews a short training summary.
+9. Trainee submits completed/filled rows as the final result.
+10. App clears or closes the draft, confirms completion, and makes the result available for trainee progress and coach review.
 
 Workout logging layout:
 
@@ -118,6 +134,8 @@ Workout logging layout:
 - Completion controls: set done/skip state if included, without relying on color alone.
 - Summary footer: completed sets, estimated duration, visible submit action.
 - Final review: duration, completed sets, optional notes, warning for incomplete required fields.
+- Draft status strip: saved/saving/error/restored state, last saved timestamp, and retry affordance when autosave fails.
+- Leave protection: browser reload/route leave warning only when the latest local edits have not been persisted to Convex.
 
 Set input UI by exercise type:
 
@@ -141,15 +159,21 @@ Review summary:
 - Submitted volume when calculation is reliable.
 - Optional trainee notes.
 - Clear confirmation that the result will be visible to coach.
+- Clear warning when not all planned sets are completed, without blocking intentional partial submission.
 
 States:
 
 - Loading: routine shell and set-row skeletons.
+- Restoring draft: routine is visible only after the active draft has been resolved or created.
 - Empty: routine has no exercises or targets.
 - Error: retry without losing local unsaved values when possible.
 - Unauthorized: trainee cannot access this routine/program.
 - Disabled: submit blocked until minimum required fields are valid.
-- Partial: incomplete optional sets can remain visible, but required fields explain what is missing.
+- Autosaving: local edits are being persisted to Convex.
+- Draft saved: latest local edits are stored in Convex and can be restored later.
+- Draft save failed: trainee can keep editing locally in the current page, retry save, or attempt final submit; UI must clearly say the latest draft may not survive a page close.
+- Restored: the screen should clearly indicate when values were restored from an existing draft.
+- Partial: incomplete sets can remain visible and unsubmitted; completed rows with missing required fields explain what is missing.
 - Success: confirmation and next useful action, such as back to program or view summary.
 
 ## Data Model Plan
@@ -190,14 +214,51 @@ activities: defineTable({
 }).index('by_trainee', ['traineeId'])
 ```
 
+Add server-backed draft tables for resilient in-progress workouts:
+
+```ts
+trainingDrafts: defineTable({
+  assignmentId: v.id('programAssignments'),
+  createdAt: v.number(),
+  durationMinutes: v.optional(v.number()),
+  lastSavedAt: v.number(),
+  notes: v.optional(v.string()),
+  programId: v.id('programs'),
+  routineId: v.id('routines'),
+  status: v.union(v.literal('active'), v.literal('submitted'), v.literal('discarded')),
+  traineeId: v.id('users'),
+})
+  .index('by_trainee_and_status', ['traineeId', 'status'])
+  .index('by_assignment_routine_status', ['assignmentId', 'routineId', 'status'])
+
+trainingDraftSetResults: defineTable({
+  completed: v.boolean(),
+  distanceMeters: v.optional(v.number()),
+  durationSeconds: v.optional(v.number()),
+  draftId: v.id('trainingDrafts'),
+  exerciseId: v.id('exercises'),
+  reps: v.optional(v.number()),
+  routineExerciseBlockId: v.id('routineExerciseBlocks'),
+  rpe: v.optional(v.number()),
+  setIndex: v.number(),
+  updatedAt: v.number(),
+  weightKg: v.optional(v.number()),
+})
+  .index('by_draft', ['draftId'])
+  .index('by_draft_block_set', ['draftId', 'routineExerciseBlockId', 'setIndex'])
+```
+
 Recommended schema tightening:
 
 - Add `trainingResults.by_trainee_and_completed_at` for history and statistics.
 - Add `trainingResults.by_program` if coach review needs program-level filtering.
 - Add `trainingResults.by_trainee_and_program` if trainee program progress needs efficient filtering.
-- Consider storing derived fields on `trainingResults`: `completedSets`, `volumeKg`, and `sourceAssignmentId` after the assignment model is settled.
-- Consider `status` only if edit/approval/draft behavior is confirmed. Without that decision, submissions should be final in MVP.
+- Store derived fields on `trainingResults`: `completedSets` and `volumeKg` where reliable.
+- Consider storing `sourceAssignmentId` on `trainingResults` after the assignment model is settled.
+- Do not add draft/edit status to final `trainingResults` for MVP. Draft lifecycle belongs to `trainingDrafts`; submitted results remain final.
 - Keep set results as child rows. Do not store unbounded set arrays in `trainingResults`.
+- Enforce at most one active draft per trainee, assignment, and routine unless a future product decision allows multiple concurrent attempts.
+- When a draft is submitted, create final result rows atomically and mark the draft `submitted` in the same mutation.
 
 Derived values:
 
@@ -220,6 +281,9 @@ Convex module: `convex/trainingResults.ts`
 Functions:
 
 - `getLoggingRoutine`: public query, authenticated trainee only, validates assigned access and returns routine logging view model.
+- `getOrCreateDraft`: public mutation, authenticated trainee only, validates assigned access and returns the active draft with draft set rows.
+- `updateDraft`: public mutation, authenticated trainee only, validates assigned access and upserts draft values and draft set rows.
+- `discardDraft`: public mutation, authenticated trainee only, marks an active draft as discarded when the trainee intentionally abandons it.
 - `submit`: public mutation, authenticated trainee only, validates assigned access, validates per-set fields against exercise types, inserts `trainingResults`, `trainingResultSetResults`, and `activities`.
 - `listForTrainee`: public query, authenticated trainee only, bounded/paginated result history.
 - `getForTrainee`: public query, authenticated trainee only, returns one submitted result with set rows.
@@ -239,6 +303,7 @@ Validation:
 
 - Every Convex function must have argument validators.
 - Validate submitted set values against the exercise type, not only against frontend Zod.
+- Validate draft set values against the exercise type on every draft update. Drafts may contain incomplete rows, but completed rows must not contain impossible values.
 - Reject negative numbers and impossible values.
 - Validate `rpe` from 1 to 10 when provided.
 - Validate `setIndex` and exercise ids against the source routine, unless product explicitly allows extra ad hoc sets.
@@ -247,8 +312,10 @@ Validation:
 Mutation behavior:
 
 - Submit should run as one Convex mutation so result rows and activity are created atomically.
+- Submit from a draft should re-read the server draft, validate the latest persisted rows, create final result rows from completed/filled rows, create the activity, and mark the draft submitted atomically.
+- Autosave should be debounced on the client and idempotent on the server. Repeated updates for the same draft/block/set should patch the same draft set row rather than inserting duplicates.
 - Keep mutation size bounded by reasonable routine size.
-- If very large routines become possible, split into a draft/session model before supporting huge submissions.
+- If very large routines become possible, add chunked draft updates or per-row mutations before supporting huge submissions.
 
 ## Frontend Architecture
 
@@ -258,6 +325,7 @@ Recommended Feature-Sliced placement:
 - `entities/routine`: routine logging view-model helpers and set target display utilities.
 - `entities/exercise`: exercise type field mapping and labels.
 - `features/submit-training-result`: form state, submit mapping, validation, optimistic disabled states, success handling.
+- `features/manage-training-draft`: draft restore, autosave, retry, dirty-state tracking, discard behavior, and submit-from-draft coordination.
 - `widgets/workout-logging`: page composition, routine header, exercise blocks, set rows, summary footer, review state.
 - `widgets/training-result-summary`: reusable result summary for trainee history and coach review if needed.
 - `src/routes/my-program/training.tsx`: route candidate for logging from assigned program view.
@@ -267,6 +335,8 @@ Formik guidance:
 - Formik may be used if the whole routine is one structured form.
 - Local state may be better for per-set touch interactions if Formik becomes too heavy on mobile.
 - If local state is used, still keep Zod schemas for payload validation and tests.
+- Local React state may hold the currently edited values, but it must be synchronized to Convex drafts and must not be the only place a trainee's progress exists.
+- A small local fallback cache may be used only for unsent changes while Convex autosave is retrying; Convex remains the source of truth once the network is available.
 
 Candidate feature-local components:
 
@@ -275,6 +345,8 @@ Candidate feature-local components:
 - `SetResultRow`
 - `ExerciseMediaHint`
 - `TrainingSummaryReview`
+- `DraftSaveStatus`
+- `ResumeDraftNotice`
 - `SubmitTrainingButton`
 - `TrainingResultSuccess`
 
@@ -304,20 +376,22 @@ Do not make decorative charts in this feature. The submission feature should sto
 
 ## Implementation Plan
 
-1. Confirm whether submissions are final in MVP or editable later.
-2. Confirm assigned program persistence: live template reference or trainee-specific snapshot.
-3. Confirm whether bodyweight is part of training submission, independent tracking, progress photos, or all three.
-4. Add training result schemas, unit labels, and derived summary helpers in `src/entities/training-result`.
+1. Confirm assigned program persistence: live template reference or trainee-specific snapshot.
+2. Confirm whether bodyweight is part of training submission, independent tracking, progress photos, or all three.
+3. Decide skipped-set semantics: absent rows only, explicit skipped rows, or coach-visible skip reasons.
+4. Add training result and training draft schemas, unit labels, draft status labels, and derived summary helpers in `src/entities/training-result`.
 5. Add exercise-type field mapping helpers if not already centralized in `src/entities/exercise`.
-6. Add `convex/trainingResults.ts` with `getLoggingRoutine`, `submit`, `listForTrainee`, and coach review queries.
-7. Add required indexes to `convex/schema.ts` for trainee history, program filtering, and coach review.
-8. Add Convex tests for authorization, field validation, atomic submission, and activity creation.
-9. Add `features/submit-training-result` for client-side validation and submit mapping.
-10. Add `widgets/workout-logging` with mobile-first logging UI and all core states.
-11. Add route candidate `src/routes/my-program/training.tsx` or the final trainee route.
-12. Wire start action from `trainee-program-view` to the logging route.
-13. Add basic result summary view or success state after submission.
-14. Run Convex codegen/checks, `npm run typecheck`, `npm run test`, `npm run build`, and mobile browser checks.
+6. Add `trainingDrafts` and `trainingDraftSetResults` to `convex/schema.ts` with indexes for active draft restore.
+7. Add `convex/trainingResults.ts` functions for `getLoggingRoutine`, `getOrCreateDraft`, `updateDraft`, `discardDraft`, `submit`, `listForTrainee`, and coach review queries.
+8. Add required indexes to `convex/schema.ts` for trainee history, program filtering, coach review, and active draft lookup.
+9. Add Convex tests for authorization, draft restore, idempotent autosave, field validation, atomic submit-from-draft, draft close, and activity creation.
+10. Add `features/manage-training-draft` for restore, autosave, retry, dirty-state tracking, and leave protection.
+11. Add `features/submit-training-result` for final submit mapping and validation from the persisted draft.
+12. Add `widgets/workout-logging` with mobile-first logging UI, draft status UI, partial completion warnings, and all core states.
+13. Add route candidate `src/routes/my-program/training.tsx` or the final trainee route.
+14. Wire start/continue action from `trainee-program-view` to the logging route and show active draft state when available.
+15. Add basic result summary view or success state after submission.
+16. Run Convex codegen/checks, `npm run typecheck`, `npm run test`, `npm run build`, and mobile browser checks.
 
 ## Acceptance Criteria
 
@@ -326,10 +400,16 @@ Do not make decorative charts in this feature. The submission feature should sto
 - Each exercise shows only result fields relevant to its exercise type.
 - Target values remain visible while entering actual values.
 - Numeric fields include units and mobile-friendly input modes.
-- Trainee can submit a valid routine result.
+- Trainee changes are autosaved to a Convex draft while logging.
+- Trainee can refresh, leave, close the tab, or open another browser/device and restore the active draft.
+- UI clearly shows when the draft is saving, saved, restored, or failed to save.
+- UI warns before route leave/reload only when there are unsaved local edits not yet persisted to Convex.
+- Trainee can intentionally submit a partial workout with only completed/filled sets.
+- Trainee can submit a valid routine result from the persisted draft.
 - Submission creates one `trainingResults` row.
 - Submission creates set result rows for submitted sets.
 - Submission creates one linked training activity.
+- Submission marks the active draft as submitted or otherwise prevents it from reappearing as active.
 - Submission stores `programId` when the result came from an assigned program.
 - Invalid field combinations are rejected on frontend and in Convex.
 - Trainee cannot submit for another trainee, unassigned routine, or unassigned program.
@@ -346,10 +426,17 @@ Do not make decorative charts in this feature. The submission feature should sto
 - `npm run build`
 - Convex query: `getLoggingRoutine` rejects unassigned routine.
 - Convex mutation: valid minimum submission creates result, set rows, and activity atomically.
+- Convex mutation: `getOrCreateDraft` returns the existing active draft instead of creating duplicates.
+- Convex mutation: `updateDraft` is idempotent for the same draft/block/set row.
+- Convex mutation: submit-from-draft marks the draft submitted and does not leave an active duplicate.
+- Convex query/mutation: trainee cannot read, update, discard, or submit another trainee's draft.
 - Convex validation: reject invalid RPE, negative numbers, wrong fields for exercise type, wrong set index, and exercise not in routine.
 - Authorization: unauthenticated user cannot submit; coach cannot submit as trainee; trainee cannot submit another trainee's routine.
 - Coach review: coach can read managed trainee result and cannot read unmanaged trainee result.
 - Browser mobile: exercise blocks, set rows, units, and submit footer are readable and touch-friendly.
+- Browser resilience: refresh after entering values restores the Convex draft.
+- Browser resilience: route leave and return restores the Convex draft.
+- Browser resilience: autosave failure state is visible and does not silently pretend the draft was saved.
 - Browser desktop: workflow remains clear without becoming coach-dashboard dense.
 - Data contract: submitted result appears in trainee history and is available for coach review/statistics queries.
 
@@ -361,4 +448,4 @@ Do not make decorative charts in this feature. The submission feature should sto
 - Decide whether extra sets beyond prescribed targets are allowed.
 - Decide whether skipped sets are explicit records or simply absent set results.
 - Decide how current routine selection works when multiple assigned routines are available.
-- Offline draft support is later scope and should be planned separately.
+- Decide whether full offline-first workout logging is needed beyond Convex-backed drafts and transient local retry state.

@@ -152,6 +152,21 @@ It includes:
 
 Training results are visible to both the trainee and the coach.
 
+### Training Draft
+
+A training draft stores an in-progress workout before final submission.
+
+It includes:
+
+- Assigned program and routine context.
+- Trainee owner.
+- Per-set draft values and completion state.
+- Training duration and optional notes.
+- Last saved timestamp.
+- Draft status such as active, submitted, or discarded.
+
+Training drafts are saved in Convex for MVP so trainees can recover work after refresh, accidental navigation, browser close, or switching device/browser. Convex is the source of truth for active drafts; local state may only support immediate editing or retry UX.
+
 ### Progress Photo
 
 A progress photo includes:
@@ -260,6 +275,10 @@ Activities power:
 - View exercise photo and video link.
 - Fill in set results using fields matched to exercise type.
 - Track RPE and completed reps, weight, duration, or distance as applicable.
+- Autosave in-progress training drafts to Convex.
+- Resume an active training draft after refresh, accidental navigation, browser close, or switching device/browser.
+- Show clear draft save status and warn before leaving when local edits have not reached Convex.
+- Submit partially completed workouts when only some sets or exercises were completed.
 - Submit training summary.
 - Create training result on submission.
 - Create activity on submission.
@@ -269,7 +288,7 @@ Activities power:
 - Rest timer.
 - Previous result comparison.
 - Inline exercise substitution.
-- Offline draft support.
+- Full offline-first workout logging without network access.
 - Training notes.
 - Per-set completion shortcuts.
 
@@ -340,9 +359,10 @@ The first usable version should include:
 5. Program builder.
 6. Program assignment to users.
 7. Trainee workout logging.
-8. Training result submission.
-9. Coach review of submitted results.
-10. Basic statistics: weekly duration, volume, sets, bodyweight, photos, and activity map.
+8. Convex-backed in-progress training drafts.
+9. Training result submission.
+10. Coach review of submitted results.
+11. Basic statistics: weekly duration, volume, sets, bodyweight, photos, and activity map.
 
 ## Non-MVP / Later
 
@@ -365,10 +385,12 @@ These features should not block the first version:
 
 - Mobile-first.
 - Clear current workout state.
+- Durable in-progress workout state that can survive refresh, accidental navigation, browser close, and device/browser changes.
 - Minimal fields at the moment of logging.
 - Exercise media available before or during logging.
 - Numeric inputs must be easy to use on mobile.
 - Submission must clearly confirm completion.
+- Partial workouts must be understandable and intentional, not treated as a broken form.
 
 ### Coach UX
 
@@ -384,6 +406,7 @@ These features should not block the first version:
 - Should assigned programs be copied into a user-specific snapshot or stay linked to the original program?
 - Should trainees be able to edit submitted training results?
 - Should coaches approve edited results?
+- Should skipped workout sets be saved explicitly, inferred from absent result rows, or captured with a skip reason?
 - Should progress photos be visible to coach by default?
 - Should bodyweight be logged independently, attached to photos, attached to training summaries, or all three?
 - Should activity map use calendar-style intensity, simple completion dots, or both?

@@ -25,6 +25,18 @@ const submittedSetValidator = v.object({
   weightKg: v.optional(v.number()),
 })
 
+const draftSetValidator = v.object({
+  completed: v.boolean(),
+  distanceMeters: v.optional(v.number()),
+  durationSeconds: v.optional(v.number()),
+  exerciseId: v.id('exercises'),
+  reps: v.optional(v.number()),
+  routineExerciseBlockId: v.id('routineExerciseBlocks'),
+  rpe: v.optional(v.number()),
+  setIndex: v.number(),
+  weightKg: v.optional(v.number()),
+})
+
 type TrainingCtx = Pick<QueryCtx | MutationCtx, 'db' | 'storage'>
 
 type SubmittedSetInput = {
@@ -36,6 +48,10 @@ type SubmittedSetInput = {
   rpe?: number
   setIndex: number
   weightKg?: number
+}
+
+type DraftSetInput = SubmittedSetInput & {
+  completed: boolean
 }
 
 type RoutineBlockView = Doc<'routineExerciseBlocks'> & {
@@ -94,13 +110,132 @@ export const getLoggingRoutine = query({
   },
 })
 
-export const submit = mutation({
+export const getOrCreateDraft = mutation({
   args: {
     assignmentId: v.id('programAssignments'),
+    routineId: v.id('routines'),
+  },
+  handler: async (ctx, args) => {
+    const trainee = await requireTrainee(ctx)
+    const access = await getRoutineAccess(ctx, {
+      assignmentId: args.assignmentId,
+      routineId: args.routineId,
+      traineeId: trainee._id,
+    })
+    const existingDraft = await getActiveDraft(ctx, {
+      assignmentId: args.assignmentId,
+      routineId: args.routineId,
+      traineeId: trainee._id,
+    })
+
+    if (existingDraft) {
+      return await getDraftDetail(ctx, existingDraft)
+    }
+
+    const now = Date.now()
+    const draftId = await ctx.db.insert('trainingDrafts', {
+      assignmentId: access.assignment._id,
+      createdAt: now,
+      lastSavedAt: now,
+      programId: access.program._id,
+      routineId: access.routine._id,
+      status: 'active',
+      traineeId: trainee._id,
+    })
+    const draft = await ctx.db.get(draftId)
+
+    if (!draft) {
+      throw new Error('Nie udalo sie utworzyc szkicu treningu.')
+    }
+
+    return await getDraftDetail(ctx, draft)
+  },
+})
+
+export const updateDraft = mutation({
+  args: {
+    assignmentId: v.id('programAssignments'),
+    draftId: v.id('trainingDrafts'),
     durationMinutes: v.optional(v.number()),
     notes: v.optional(v.string()),
     routineId: v.id('routines'),
-    setResults: v.array(submittedSetValidator),
+    setResults: v.array(draftSetValidator),
+  },
+  handler: async (ctx, args) => {
+    const trainee = await requireTrainee(ctx)
+    const access = await getRoutineAccess(ctx, {
+      assignmentId: args.assignmentId,
+      routineId: args.routineId,
+      traineeId: trainee._id,
+    })
+    const draft = await requireActiveDraft(ctx, {
+      draftId: args.draftId,
+      traineeId: trainee._id,
+      assignmentId: access.assignment._id,
+      routineId: access.routine._id,
+    })
+    const durationMinutes = sanitizeDuration(args.durationMinutes)
+    const notes = sanitizeNotes(args.notes)
+    const parsedSetResults = await parseDraftSets(ctx, access.routine._id, args.setResults)
+    const now = Date.now()
+
+    await ctx.db.patch(draft._id, {
+      durationMinutes,
+      lastSavedAt: now,
+      notes,
+    })
+
+    for (const setResult of parsedSetResults) {
+      await upsertDraftSetResult(ctx, draft._id, setResult, now)
+    }
+
+    const updatedDraft = await ctx.db.get(draft._id)
+
+    if (!updatedDraft) {
+      throw new Error('Nie udalo sie zapisac szkicu treningu.')
+    }
+
+    return await getDraftDetail(ctx, updatedDraft)
+  },
+})
+
+export const discardDraft = mutation({
+  args: {
+    assignmentId: v.id('programAssignments'),
+    draftId: v.id('trainingDrafts'),
+    routineId: v.id('routines'),
+  },
+  handler: async (ctx, args) => {
+    const trainee = await requireTrainee(ctx)
+    const access = await getRoutineAccess(ctx, {
+      assignmentId: args.assignmentId,
+      routineId: args.routineId,
+      traineeId: trainee._id,
+    })
+    const draft = await requireActiveDraft(ctx, {
+      draftId: args.draftId,
+      traineeId: trainee._id,
+      assignmentId: access.assignment._id,
+      routineId: access.routine._id,
+    })
+
+    await ctx.db.patch(draft._id, {
+      lastSavedAt: Date.now(),
+      status: 'discarded',
+    })
+
+    return { discarded: true }
+  },
+})
+
+export const submit = mutation({
+  args: {
+    assignmentId: v.id('programAssignments'),
+    draftId: v.optional(v.id('trainingDrafts')),
+    durationMinutes: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    routineId: v.id('routines'),
+    setResults: v.optional(v.array(submittedSetValidator)),
   },
   handler: async (ctx, args) => {
     const trainee = await requireTrainee(ctx)
@@ -110,56 +245,56 @@ export const submit = mutation({
       traineeId: trainee._id,
     })
 
-    const durationMinutes = sanitizeDuration(args.durationMinutes)
-    const notes = sanitizeNotes(args.notes)
-    const parsedSetResults = await parseSubmittedSets(ctx, access.routine._id, args.setResults)
-    const completedSets = parsedSetResults.length
+    if (args.draftId) {
+      const draft = await requireActiveDraft(ctx, {
+        draftId: args.draftId,
+        traineeId: trainee._id,
+        assignmentId: access.assignment._id,
+        routineId: access.routine._id,
+      })
+      const draftSetResults = await getDraftSetResults(ctx, draft._id)
+      const submittedSetResults = draftSetResults
+        .filter((row) => row.completed)
+        .map((row) => ({
+          distanceMeters: row.distanceMeters,
+          durationSeconds: row.durationSeconds,
+          exerciseId: row.exerciseId,
+          reps: row.reps,
+          routineExerciseBlockId: row.routineExerciseBlockId,
+          rpe: row.rpe,
+          setIndex: row.setIndex,
+          weightKg: row.weightKg,
+        }))
 
-    if (completedSets === 0) {
-      throw new Error('Uzupelnij przynajmniej jedna serie przed zapisem treningu.')
+      const result = await createSubmittedTrainingResult(ctx, {
+        durationMinutes: draft.durationMinutes,
+        notes: draft.notes,
+        programId: access.program._id,
+        routineId: access.routine._id,
+        setResults: submittedSetResults,
+        traineeId: trainee._id,
+      })
+
+      await ctx.db.patch(draft._id, {
+        lastSavedAt: Date.now(),
+        status: 'submitted',
+      })
+
+      return result
     }
 
-    const volumeKg = calculateVolumeKg(parsedSetResults)
-    const completedAt = Date.now()
-    const trainingResultId = await ctx.db.insert('trainingResults', {
-      completedAt,
-      completedSets,
-      durationMinutes,
-      notes,
+    if (!args.setResults) {
+      throw new Error('Nie znaleziono szkicu ani serii do zapisu.')
+    }
+
+    return await createSubmittedTrainingResult(ctx, {
+      durationMinutes: args.durationMinutes,
+      notes: args.notes,
       programId: access.program._id,
       routineId: access.routine._id,
+      setResults: args.setResults,
       traineeId: trainee._id,
-      volumeKg,
     })
-
-    for (const setResult of parsedSetResults) {
-      await ctx.db.insert('trainingResultSetResults', {
-        distanceMeters: setResult.distanceMeters,
-        durationSeconds: setResult.durationSeconds,
-        exerciseId: setResult.exerciseId,
-        reps: setResult.reps,
-        routineExerciseBlockId: setResult.routineExerciseBlockId,
-        rpe: setResult.rpe,
-        setIndex: setResult.setIndex,
-        trainingResultId,
-        weightKg: setResult.weightKg,
-      })
-    }
-
-    await ctx.db.insert('activities', {
-      createdAt: completedAt,
-      durationMinutes,
-      traineeId: trainee._id,
-      trainingResultId,
-      type: 'training_completed',
-    })
-
-    return {
-      completedAt,
-      completedSets,
-      trainingResultId,
-      volumeKg,
-    }
   },
 })
 
@@ -358,6 +493,114 @@ async function getRoutineBlocks(
   return rows.filter((row) => row !== null)
 }
 
+async function getActiveDraft(
+  ctx: TrainingCtx,
+  args: {
+    assignmentId: Id<'programAssignments'>
+    routineId: Id<'routines'>
+    traineeId: Id<'users'>
+  },
+) {
+  const drafts = await ctx.db
+    .query('trainingDrafts')
+    .withIndex('by_assignment_and_routine_and_status', (q) =>
+      q
+        .eq('assignmentId', args.assignmentId)
+        .eq('routineId', args.routineId)
+        .eq('status', 'active'),
+    )
+    .take(4)
+
+  return drafts.find((draft) => draft.traineeId === args.traineeId) ?? null
+}
+
+async function requireActiveDraft(
+  ctx: TrainingCtx,
+  args: {
+    assignmentId: Id<'programAssignments'>
+    draftId: Id<'trainingDrafts'>
+    routineId: Id<'routines'>
+    traineeId: Id<'users'>
+  },
+) {
+  const draft = await ctx.db.get(args.draftId)
+
+  if (
+    !draft ||
+    draft.status !== 'active' ||
+    draft.traineeId !== args.traineeId ||
+    draft.assignmentId !== args.assignmentId ||
+    draft.routineId !== args.routineId
+  ) {
+    throw new Error('Nie znaleziono aktywnego szkicu tego treningu.')
+  }
+
+  return draft
+}
+
+async function getDraftSetResults(
+  ctx: TrainingCtx,
+  draftId: Id<'trainingDrafts'>,
+) {
+  return await ctx.db
+    .query('trainingDraftSetResults')
+    .withIndex('by_draft', (q) => q.eq('draftId', draftId))
+    .take(MAX_SUBMITTED_SETS)
+}
+
+async function getDraftDetail(ctx: TrainingCtx, draft: Doc<'trainingDrafts'>) {
+  const setResults = await getDraftSetResults(ctx, draft._id)
+
+  return {
+    ...draft,
+    setResults: setResults.sort((a, b) => {
+      const blockCompare = a.routineExerciseBlockId.localeCompare(
+        b.routineExerciseBlockId,
+      )
+
+      return blockCompare === 0 ? a.setIndex - b.setIndex : blockCompare
+    }),
+  }
+}
+
+async function upsertDraftSetResult(
+  ctx: MutationCtx,
+  draftId: Id<'trainingDrafts'>,
+  setResult: ReturnType<typeof sanitizeDraftSetResult>,
+  updatedAt: number,
+) {
+  const existingRows = await ctx.db
+    .query('trainingDraftSetResults')
+    .withIndex('by_draft_and_routine_exercise_block_and_set_index', (q) =>
+      q
+        .eq('draftId', draftId)
+        .eq('routineExerciseBlockId', setResult.routineExerciseBlockId)
+        .eq('setIndex', setResult.setIndex),
+    )
+    .take(2)
+  const existingRow = existingRows[0]
+  const row = {
+    completed: setResult.completed,
+    distanceMeters: setResult.distanceMeters,
+    draftId,
+    durationSeconds: setResult.durationSeconds,
+    exerciseId: setResult.exerciseId,
+    reps: setResult.reps,
+    routineExerciseBlockId: setResult.routineExerciseBlockId,
+    rpe: setResult.rpe,
+    setIndex: setResult.setIndex,
+    updatedAt,
+    weightKg: setResult.weightKg,
+  }
+
+  if (existingRow) {
+    await ctx.db.patch(existingRow._id, row)
+    return
+  }
+
+  await ctx.db.insert('trainingDraftSetResults', row)
+}
+
 async function parseSubmittedSets(
   ctx: MutationCtx,
   routineId: Id<'routines'>,
@@ -399,6 +642,52 @@ async function parseSubmittedSets(
 
     validateSubmittedSetForExercise(block.exercise, setResult)
     parsed.push(sanitizeSetResult(setResult))
+  }
+
+  return parsed
+}
+
+async function parseDraftSets(
+  ctx: MutationCtx,
+  routineId: Id<'routines'>,
+  setResults: DraftSetInput[],
+) {
+  if (setResults.length > MAX_SUBMITTED_SETS) {
+    throw new Error(`Trening moze miec maksymalnie ${MAX_SUBMITTED_SETS} serii w szkicu.`)
+  }
+
+  const blocks = await getRoutineBlocks(ctx, routineId)
+  const blockMap = new Map(blocks.map((block) => [String(block._id), block]))
+  const seen = new Set<string>()
+  const parsed = []
+
+  for (const setResult of setResults) {
+    const key = `${setResult.routineExerciseBlockId}:${setResult.setIndex}`
+
+    if (seen.has(key)) {
+      throw new Error('Ta sama seria nie moze byc zapisana dwa razy w szkicu.')
+    }
+    seen.add(key)
+
+    const block = blockMap.get(String(setResult.routineExerciseBlockId))
+    if (!block || block.routineId !== routineId) {
+      throw new Error('Jedna z serii szkicu nie nalezy do tej rutyny.')
+    }
+
+    if (block.exercise._id !== setResult.exerciseId) {
+      throw new Error('Cwiczenie w szkicu nie pasuje do rutyny.')
+    }
+
+    const target = block.setTargets.find(
+      (candidate) => candidate.setIndex === setResult.setIndex,
+    )
+
+    if (!target) {
+      throw new Error('Numer serii w szkicu nie pasuje do planu rutyny.')
+    }
+
+    validateDraftSetForExercise(block.exercise, setResult)
+    parsed.push(sanitizeDraftSetResult(setResult))
   }
 
   return parsed
@@ -465,6 +754,60 @@ function validateSubmittedSetForExercise(
   }
 }
 
+function validateDraftSetForExercise(
+  exercise: Pick<Doc<'exercises'>, 'type'>,
+  setResult: SubmittedSetInput,
+) {
+  if (!isPositiveInteger(setResult.setIndex)) {
+    throw new Error('Numer serii musi byc dodatnia liczba calkowita.')
+  }
+
+  if (setResult.rpe !== undefined && (setResult.rpe < 1 || setResult.rpe > 10)) {
+    throw new Error('RPE musi byc liczba od 1 do 10.')
+  }
+
+  for (const [label, value] of Object.entries({
+    dystans: setResult.distanceMeters,
+    czas: setResult.durationSeconds,
+    powtorzenia: setResult.reps,
+    ciezar: setResult.weightKg,
+  })) {
+    if (value !== undefined && (!Number.isFinite(value) || value < 0)) {
+      throw new Error(`${label} musi byc nieujemna liczba.`)
+    }
+  }
+
+  const hasDistance = setResult.distanceMeters !== undefined
+  const hasDuration = setResult.durationSeconds !== undefined
+  const hasReps = setResult.reps !== undefined
+  const hasWeight = setResult.weightKg !== undefined
+
+  switch (exercise.type) {
+    case 'weight_reps':
+      rejectFields(hasDuration || hasDistance, 'Ten typ cwiczenia przyjmuje ciezar i powtorzenia.')
+      break
+    case 'reps_only':
+    case 'bodyweight':
+      rejectFields(hasWeight || hasDuration || hasDistance, 'Ten typ cwiczenia przyjmuje tylko powtorzenia.')
+      break
+    case 'assisted_bodyweight':
+      rejectFields(hasDuration || hasDistance, 'Ten typ cwiczenia przyjmuje asyste i powtorzenia.')
+      break
+    case 'duration':
+      rejectFields(hasWeight || hasReps || hasDistance, 'Ten typ cwiczenia przyjmuje tylko czas.')
+      break
+    case 'weight_duration':
+      rejectFields(hasReps || hasDistance, 'Ten typ cwiczenia przyjmuje ciezar i czas.')
+      break
+    case 'distance_duration':
+      rejectFields(hasWeight || hasReps, 'Ten typ cwiczenia przyjmuje dystans i czas.')
+      break
+    case 'weight_distance':
+      rejectFields(hasReps || hasDuration, 'Ten typ cwiczenia przyjmuje ciezar i dystans.')
+      break
+  }
+}
+
 function sanitizeSetResult(setResult: SubmittedSetInput) {
   return {
     distanceMeters: setResult.distanceMeters,
@@ -475,6 +818,76 @@ function sanitizeSetResult(setResult: SubmittedSetInput) {
     rpe: setResult.rpe,
     setIndex: setResult.setIndex,
     weightKg: setResult.weightKg,
+  }
+}
+
+function sanitizeDraftSetResult(setResult: DraftSetInput) {
+  return {
+    ...sanitizeSetResult(setResult),
+    completed: setResult.completed,
+  }
+}
+
+async function createSubmittedTrainingResult(
+  ctx: MutationCtx,
+  args: {
+    durationMinutes?: number
+    notes?: string
+    programId: Id<'programs'>
+    routineId: Id<'routines'>
+    setResults: SubmittedSetInput[]
+    traineeId: Id<'users'>
+  },
+) {
+  const durationMinutes = sanitizeDuration(args.durationMinutes)
+  const notes = sanitizeNotes(args.notes)
+  const parsedSetResults = await parseSubmittedSets(ctx, args.routineId, args.setResults)
+  const completedSets = parsedSetResults.length
+
+  if (completedSets === 0) {
+    throw new Error('Uzupelnij przynajmniej jedna serie przed zapisem treningu.')
+  }
+
+  const volumeKg = calculateVolumeKg(parsedSetResults)
+  const completedAt = Date.now()
+  const trainingResultId = await ctx.db.insert('trainingResults', {
+    completedAt,
+    completedSets,
+    durationMinutes,
+    notes,
+    programId: args.programId,
+    routineId: args.routineId,
+    traineeId: args.traineeId,
+    volumeKg,
+  })
+
+  for (const setResult of parsedSetResults) {
+    await ctx.db.insert('trainingResultSetResults', {
+      distanceMeters: setResult.distanceMeters,
+      durationSeconds: setResult.durationSeconds,
+      exerciseId: setResult.exerciseId,
+      reps: setResult.reps,
+      routineExerciseBlockId: setResult.routineExerciseBlockId,
+      rpe: setResult.rpe,
+      setIndex: setResult.setIndex,
+      trainingResultId,
+      weightKg: setResult.weightKg,
+    })
+  }
+
+  await ctx.db.insert('activities', {
+    createdAt: completedAt,
+    durationMinutes,
+    traineeId: args.traineeId,
+    trainingResultId,
+    type: 'training_completed',
+  })
+
+  return {
+    completedAt,
+    completedSets,
+    trainingResultId,
+    volumeKg,
   }
 }
 

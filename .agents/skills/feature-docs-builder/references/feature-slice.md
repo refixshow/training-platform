@@ -23,7 +23,7 @@ Prefer this implementation order when building a new full-stack feature:
 3. Route/page structure and loading/error/empty states.
 4. Forms and interaction flow.
 5. Reusable UI extraction only where justified.
-6. Feature-local docs from `spec-driven-docs.md` when the feature has enough complexity or decisions to preserve.
+6. Feature-local docs from `spec-driven-docs.md` only when the feature has enough complexity or decisions to preserve.
 7. Tests, typecheck, browser verification, and graph update.
 
 For narrower UI-only work, skip backend steps only after confirming the data already exists or the task is intentionally mocked.
@@ -45,7 +45,7 @@ Avoid creating many slices at once for an early single-use feature. The first ve
 
 ## Feature Documentation
 
-Use `spec-driven-docs.md` when a feature is more than a tiny UI tweak. Prefer a small doc pack beside the owning slice:
+Use `spec-driven-docs.md` when a feature is more than a tiny UI tweak and durable context will prevent future drift. Prefer a small doc pack beside the owning slice:
 
 ```text
 src/features/<feature-name>/
@@ -57,7 +57,7 @@ src/features/<feature-name>/
 └── ...
 ```
 
-Create only the files that earn their keep. A simple feature may need only `spec.md`; a technical or product-sensitive feature may need `design.md` and one ADR.
+Create only the files that earn their keep. A simple feature may need no docs; a technical or product-sensitive feature may need `spec.md`, `design.md`, or one ADR. Do not default to `docs/features/` unless the programmer asks for a central planning artifact.
 
 ## Data and Security
 

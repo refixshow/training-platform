@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Docs Builder"
+  short_description: "Create feature-local specs and implementation contracts."
+  default_prompt: "Use $feature-docs-builder to create feature-local docs or an implementation contract in this repo."

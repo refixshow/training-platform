@@ -147,6 +147,46 @@ export default defineSchema({
   })
     .index('by_exercise', ['exerciseId'])
     .index('by_training_result', ['trainingResultId']),
+  trainingDraftSetResults: defineTable({
+    completed: v.boolean(),
+    distanceMeters: v.optional(v.number()),
+    draftId: v.id('trainingDrafts'),
+    durationSeconds: v.optional(v.number()),
+    exerciseId: v.id('exercises'),
+    reps: v.optional(v.number()),
+    routineExerciseBlockId: v.id('routineExerciseBlocks'),
+    rpe: v.optional(v.number()),
+    setIndex: v.number(),
+    updatedAt: v.number(),
+    weightKg: v.optional(v.number()),
+  })
+    .index('by_draft', ['draftId'])
+    .index('by_draft_and_routine_exercise_block_and_set_index', [
+      'draftId',
+      'routineExerciseBlockId',
+      'setIndex',
+    ]),
+  trainingDrafts: defineTable({
+    assignmentId: v.id('programAssignments'),
+    createdAt: v.number(),
+    durationMinutes: v.optional(v.number()),
+    lastSavedAt: v.number(),
+    notes: v.optional(v.string()),
+    programId: v.id('programs'),
+    routineId: v.id('routines'),
+    status: v.union(
+      v.literal('active'),
+      v.literal('submitted'),
+      v.literal('discarded'),
+    ),
+    traineeId: v.id('users'),
+  })
+    .index('by_assignment_and_routine_and_status', [
+      'assignmentId',
+      'routineId',
+      'status',
+    ])
+    .index('by_trainee_and_status', ['traineeId', 'status']),
   trainingResults: defineTable({
     completedSets: v.optional(v.number()),
     completedAt: v.number(),

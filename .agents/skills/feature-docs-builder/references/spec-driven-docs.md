@@ -15,7 +15,7 @@ Do not create docs for every button or one-line fix. Create docs when future age
 
 ## Location
 
-Prefer feature-adjacent docs:
+Prefer feature-adjacent docs. Do not default to global `/docs` or `docs/features/`:
 
 ```text
 src/features/<feature-name>/
@@ -31,13 +31,13 @@ src/features/<feature-name>/
 └── index.ts
 ```
 
-If a feature is planned before code exists, use:
+If a feature is planned before code exists and the programmer explicitly wants a central planning artifact, use:
 
 ```text
 docs/features/<feature-name>/
 ```
 
-Move or copy the essential docs beside the final owning slice once implementation starts. Do not expose `_docs` from a slice public API.
+Treat central docs as temporary planning artifacts. Move or copy the essential docs beside the final owning slice once implementation starts. Do not expose `_docs` from a slice public API.
 
 ## Minimal Pack
 
