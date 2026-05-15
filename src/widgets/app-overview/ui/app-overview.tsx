@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Activity,
   BarChart3,
@@ -7,6 +8,7 @@ import {
   Users,
 } from 'lucide-react'
 
+import { cn } from '#/shared/lib/cn'
 import { Button } from '#/shared/ui/button'
 
 import {
@@ -17,7 +19,24 @@ import {
 
 const moduleIcons = [Dumbbell, ClipboardList, Users, Activity, Camera, BarChart3]
 
+type ActiveOverviewSection = 'coach-view' | 'trainee-flow'
+
+function scrollToSection(sectionId: ActiveOverviewSection) {
+  document.getElementById(sectionId)?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  })
+}
+
 export function AppOverview() {
+  const [activeSection, setActiveSection] =
+    useState<ActiveOverviewSection>('coach-view')
+
+  function openSection(sectionId: ActiveOverviewSection) {
+    setActiveSection(sectionId)
+    scrollToSection(sectionId)
+  }
+
   return (
     <main className="min-h-screen bg-background">
       <section className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
@@ -36,15 +55,35 @@ export function AppOverview() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button size="lg">Open coach view</Button>
-            <Button size="lg" variant="secondary">
+            <Button
+              size="lg"
+              variant={activeSection === 'coach-view' ? 'primary' : 'secondary'}
+              onClick={() => openSection('coach-view')}
+            >
+              Open coach view
+            </Button>
+            <Button
+              size="lg"
+              variant={
+                activeSection === 'trainee-flow' ? 'primary' : 'secondary'
+              }
+              onClick={() => openSection('trainee-flow')}
+            >
               Preview trainee flow
             </Button>
           </div>
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <section
+            aria-current={activeSection === 'coach-view' ? 'true' : undefined}
+            className={cn(
+              'scroll-mt-6 rounded-lg border border-border bg-card p-5 shadow-sm transition-[box-shadow,border-color]',
+              activeSection === 'coach-view' &&
+                'border-primary ring-2 ring-primary/25',
+            )}
+            id="coach-view"
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-muted-foreground">
@@ -97,7 +136,17 @@ export function AppOverview() {
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <section
+            aria-current={
+              activeSection === 'trainee-flow' ? 'true' : undefined
+            }
+            className={cn(
+              'scroll-mt-6 rounded-lg border border-border bg-card p-5 shadow-sm transition-[box-shadow,border-color]',
+              activeSection === 'trainee-flow' &&
+                'border-primary ring-2 ring-primary/25',
+            )}
+            id="trainee-flow"
+          >
             <p className="text-sm font-semibold text-muted-foreground">
               Trainee workout
             </p>
