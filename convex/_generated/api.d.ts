@@ -12,7 +12,6 @@ import type * as auth from "../auth.js";
 import type * as bodyMeasurements from "../bodyMeasurements.js";
 import type * as clientInvites from "../clientInvites.js";
 import type * as coachClients from "../coachClients.js";
-import type * as dev from "../dev.js";
 import type * as exercises from "../exercises.js";
 import type * as http from "../http.js";
 import type * as programAssignments from "../programAssignments.js";
@@ -33,7 +32,6 @@ declare const fullApi: ApiFromModules<{
   bodyMeasurements: typeof bodyMeasurements;
   clientInvites: typeof clientInvites;
   coachClients: typeof coachClients;
-  dev: typeof dev;
   exercises: typeof exercises;
   http: typeof http;
   programAssignments: typeof programAssignments;
