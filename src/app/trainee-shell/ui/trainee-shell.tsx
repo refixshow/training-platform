@@ -38,36 +38,81 @@ export function TraineeShell({ children, role = 'trainee' }: TraineeShellProps) 
             </span>
           </Link>
 
-          <nav aria-label="Strony podopiecznego" className="hidden sm:block">
-            <div className="flex items-center gap-1">
-              {navItems.map((item) => {
-                const Icon = item.icon
-
-                return (
-                  <Link
-                    activeProps={{
-                      className: 'bg-card text-foreground ring-1 ring-border',
-                    }}
-                    className="inline-flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-card/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    key={item.to}
-                    to={item.to}
-                  >
-                    <Icon aria-hidden="true" className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                )
-              })}
-            </div>
-          </nav>
+          <TraineeDesktopNav navItems={navItems} />
 
           <TraineeSignOut />
         </div>
       </header>
 
-      <main className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+      <main className="min-w-0 px-4 pb-24 pt-5 sm:px-6 sm:pb-5 lg:px-8 lg:py-7">
         <div className="mx-auto w-full max-w-6xl">{children}</div>
       </main>
+
+      <TraineeMobileNav navItems={navItems} />
     </div>
+  )
+}
+
+function TraineeDesktopNav({
+  navItems,
+}: {
+  navItems: ReturnType<typeof getTraineeNavItemsForRole>
+}) {
+  return (
+    <nav aria-label="Strony podopiecznego" className="hidden sm:block">
+      <div className="flex items-center gap-1">
+        {navItems.map((item) => {
+          const Icon = item.icon
+
+          return (
+            <Link
+              activeProps={{
+                className: 'bg-card text-foreground ring-1 ring-border',
+              }}
+              className="inline-flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-card/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              key={item.to}
+              to={item.to}
+            >
+              <Icon aria-hidden="true" className="h-4 w-4" />
+              {item.label}
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}
+
+function TraineeMobileNav({
+  navItems,
+}: {
+  navItems: ReturnType<typeof getTraineeNavItemsForRole>
+}) {
+  return (
+    <nav
+      aria-label="Strony podopiecznego"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2 backdrop-blur sm:hidden"
+    >
+      <div className="mx-auto grid max-w-md grid-cols-3 gap-1">
+        {navItems.map((item) => {
+          const Icon = item.icon
+
+          return (
+            <Link
+              activeProps={{
+                className: 'bg-card text-foreground ring-1 ring-border',
+              }}
+              className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-md px-2 text-center text-sm font-bold leading-tight text-muted-foreground transition-colors hover:bg-card/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              key={item.to}
+              to={item.to}
+            >
+              <Icon aria-hidden="true" className="h-4 w-4" />
+              <span>{item.label}</span>
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
   )
 }
 

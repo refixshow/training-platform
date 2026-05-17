@@ -11,7 +11,7 @@ describe('exerciseFormSchema', () => {
     const result = exerciseFormSchema.safeParse({
       ...emptyExerciseFormValues,
       name: 'Goblet squat',
-      primaryMuscleGroupId: 'legs',
+      primaryMuscleGroup: 'quadriceps',
     })
 
     expect(result.success).toBe(true)
@@ -22,7 +22,7 @@ describe('exerciseFormSchema', () => {
       ...emptyExerciseFormValues,
       equipment: 'other',
       name: 'Sled push',
-      primaryMuscleGroupId: 'legs',
+      primaryMuscleGroup: 'quadriceps',
     })
 
     expect(result.success).toBe(false)
@@ -33,24 +33,34 @@ describe('exerciseFormSchema', () => {
     const result = exerciseFormSchema.safeParse({
       ...emptyExerciseFormValues,
       name: 'Bench press',
-      primaryMuscleGroupId: 'chest',
-      secondaryMuscleGroupIds: ['chest'],
+      primaryMuscleGroup: 'chest',
+      secondaryMuscleGroups: ['chest'],
     })
 
     expect(result.success).toBe(false)
-    expect(result.error?.issues[0]?.path).toEqual(['secondaryMuscleGroupIds'])
+    expect(result.error?.issues[0]?.path).toEqual(['secondaryMuscleGroups'])
   })
 
   it('rejects invalid video URLs', () => {
     const result = exerciseFormSchema.safeParse({
       ...emptyExerciseFormValues,
       name: 'Pull-up',
-      primaryMuscleGroupId: 'back',
+      primaryMuscleGroup: 'lats',
       videoUrl: 'not-a-link',
     })
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.path).toEqual(['videoUrl'])
+  })
+
+  it('rejects an empty primary muscle group', () => {
+    const result = exerciseFormSchema.safeParse({
+      ...emptyExerciseFormValues,
+      name: 'Goblet squat',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.path).toEqual(['primaryMuscleGroup'])
   })
 })
 

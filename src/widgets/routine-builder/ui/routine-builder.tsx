@@ -41,10 +41,7 @@ import { Button } from '#/shared/ui/button'
 import { Card, CardBody, CardHeader, CardNotice } from '#/shared/ui/card'
 import { Input, Select } from '#/shared/ui/input'
 
-type ExerciseWithMuscles = Doc<'exercises'> & {
-  primaryMuscleGroup: Doc<'muscleGroups'> | null
-  secondaryMuscleGroups: Doc<'muscleGroups'>[]
-}
+type Exercise = Doc<'exercises'>
 
 type RoutineListItem = Doc<'routines'> & {
   exerciseCount: number
@@ -99,7 +96,7 @@ function ConnectedRoutineBuilder() {
   )
 
   const routines = (routinesQuery.data ?? []) as RoutineListItem[]
-  const exercises = (exercisesQuery.data ?? []) as ExerciseWithMuscles[]
+  const exercises = (exercisesQuery.data ?? []) as Exercise[]
   const queryError = authQuery.error ?? routinesQuery.error ?? exercisesQuery.error
   const normalizedSearch = search.trim().toLowerCase()
 
@@ -290,7 +287,7 @@ function RoutineEditor({
   onCancel,
   onSaved,
 }: {
-  exercises: ExerciseWithMuscles[]
+  exercises: Exercise[]
   initialValues: RoutineFormValues
   mode: Exclude<EditorMode, { kind: 'idle' }>
   onCancel: () => void
@@ -557,8 +554,8 @@ function RoutineExerciseBlockEditor({
   block: RoutineBlockFormValues
   blockIndex: number
   disabled: boolean
-  exercises: ExerciseWithMuscles[]
-  exercisesById: Map<string, ExerciseWithMuscles>
+  exercises: Exercise[]
+  exercisesById: Map<string, Exercise>
   onChange: (block: RoutineBlockFormValues) => void
   onMove: (direction: -1 | 1) => void
   onRemove: () => void
@@ -858,7 +855,7 @@ function Field({
 
 function validateRoutineForm(
   values: RoutineFormValues,
-  exercisesById: Map<string, ExerciseWithMuscles>,
+  exercisesById: Map<string, Exercise>,
 ) {
   const errors: FormikErrors<RoutineFormValues> = {}
   const result = routineFormSchema.safeParse(values)
@@ -1224,3 +1221,4 @@ function StatusMessage({
     </p>
   )
 }
+

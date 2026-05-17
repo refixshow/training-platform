@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
@@ -18,19 +19,13 @@ import {
   Scale,
   TrendingUp,
 } from 'lucide-react'
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { api } from '../../../../convex/_generated/api'
 
 import { hasConfiguredConvexUrl } from '#/shared/lib/convex-env'
+import { Button } from '#/shared/ui/button'
 import { Card, CardBody, CardHeader } from '#/shared/ui/card'
+
+import { BodyweightChart } from './bodyweight-chart'
 
 type DashboardOverview = FunctionReturnType<typeof api.traineeDashboard.getOverview>
 type CurrentProgram = NonNullable<DashboardOverview['currentProgram']>
@@ -56,7 +51,14 @@ function ConnectedTraineeDashboard() {
   }
 
   if (dashboardQuery.error) {
-    return <DashboardError error={dashboardQuery.error} />
+    return (
+      <DashboardError
+        error={dashboardQuery.error}
+        onRetry={() => {
+          void dashboardQuery.refetch()
+        }}
+      />
+    )
   }
 
   if (!dashboardQuery.data) {
@@ -103,10 +105,10 @@ function DashboardHeader({
     <header className="grid gap-4 border-b border-border pb-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-primary">Panel podopiecznego</p>
-        <h1 className="mt-2 max-w-3xl text-3xl font-bold tracking-normal text-foreground sm:text-4xl">
+        <h1 className="mt-2 max-w-3xl break-words text-3xl font-bold tracking-normal text-foreground sm:text-4xl">
           Twoj trening dzisiaj
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+        <p className="mt-3 max-w-2xl break-words text-sm leading-6 text-muted-foreground">
           Sprawdz aktualny program, rytm tygodnia i ostatnie wyniki bez
           przeladowania statystykami.
         </p>
@@ -114,7 +116,7 @@ function DashboardHeader({
 
       {currentProgram?.nextRoutine ? (
         <Link
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-semibold text-primary-foreground transition-[background-color,border-color,color,transform] duration-150 ease-out hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px"
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-semibold text-primary-foreground transition-[background-color,border-color,color,transform] duration-150 ease-out hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px sm:w-auto"
           search={{
             assignmentId: currentProgram._id,
             routineId: currentProgram.nextRoutine._id,
@@ -126,7 +128,7 @@ function DashboardHeader({
         </Link>
       ) : (
         <Link
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-secondary px-4 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-border bg-secondary px-4 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-auto"
           to="/my-program"
         >
           Moj program
@@ -150,11 +152,11 @@ function CurrentProgramPanel({
             <span className="flex h-11 w-11 items-center justify-center rounded-md bg-accent text-accent-foreground">
               <Dumbbell aria-hidden="true" className="h-5 w-5" />
             </span>
-            <div>
-              <h2 className="text-xl font-bold text-foreground">
+            <div className="min-w-0">
+              <h2 className="break-words text-xl font-bold text-foreground">
                 Nie masz jeszcze przypisanego programu
               </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              <p className="mt-2 max-w-2xl break-words text-sm leading-6 text-muted-foreground">
                 Gdy coach przypisze Ci program, tutaj pojawi sie nastepny krok,
                 rutyny i szybkie wejscie do treningu.
               </p>
@@ -174,10 +176,10 @@ function CurrentProgramPanel({
               <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
               Aktualny program
             </div>
-            <h2 className="mt-2 text-2xl font-bold text-foreground">
+            <h2 className="mt-2 break-words text-2xl font-bold text-foreground">
               {currentProgram.program.title}
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            <p className="mt-2 max-w-2xl break-words text-sm leading-6 text-muted-foreground">
               {currentProgram.program.description ||
                 'Coach nie dodal jeszcze opisu programu.'}
             </p>
@@ -210,7 +212,9 @@ function ProgramFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border bg-background px-3 py-3">
       <p className="text-xs font-bold text-muted-foreground">{label}</p>
-      <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 break-words text-lg font-bold tabular-nums text-foreground">
+        {value}
+      </p>
     </div>
   )
 }
@@ -286,7 +290,7 @@ function MetricTile({
         <Icon aria-hidden="true" className="h-4 w-4 text-primary" />
         {label}
       </div>
-      <p className="mt-3 text-2xl font-bold tabular-nums text-foreground">
+      <p className="mt-3 break-words text-2xl font-bold tabular-nums text-foreground">
         {value}
       </p>
       <p className="mt-1 text-xs font-semibold text-muted-foreground">{meta}</p>
@@ -311,9 +315,9 @@ function ActivitySummary({
       </CardHeader>
       <CardBody>
         <ActivityStrip days={activity.days} />
-        <p className="mt-4 text-sm leading-6 text-muted-foreground">
-          Kazde pole reprezentuje dzien. Mocniejszy kolor oznacza zapisany
-          trening, etykieta dnia pozostaje dostepna dla czytnikow.
+        <p className="mt-4 break-words text-sm leading-6 text-muted-foreground">
+          Kazde pole reprezentuje dzien. Liczba pod dniem pokazuje zapisane
+          treningi, a pelna etykieta pozostaje dostepna dla czytnikow.
         </p>
       </CardBody>
     </Card>
@@ -332,19 +336,25 @@ function ActivityStrip({ days }: { days: ActivityDay[] }) {
         return (
           <li key={day.date}>
             <span
-              aria-label={`${formatDate(day.date)}: ${
-                completed
-                  ? `${day.trainingCount} trening, ${formatMinutes(day.durationMinutes)}`
-                  : 'brak treningu'
-              }`}
               className={
                 completed
-                  ? 'flex aspect-square min-h-9 items-center justify-center rounded-md bg-primary text-xs font-bold tabular-nums text-primary-foreground'
-                  : 'flex aspect-square min-h-9 items-center justify-center rounded-md border border-border bg-background text-xs font-bold tabular-nums text-muted-foreground'
+                  ? 'flex aspect-square min-h-9 flex-col items-center justify-center rounded-md bg-primary text-xs font-bold tabular-nums text-primary-foreground ring-2 ring-primary/20'
+                  : 'flex aspect-square min-h-9 flex-col items-center justify-center rounded-md border border-border bg-background text-xs font-bold tabular-nums text-muted-foreground'
               }
               title={formatDate(day.date)}
             >
-              {new Date(day.date).getDate()}
+              <span aria-hidden="true">{new Date(day.date).getDate()}</span>
+              {completed ? (
+                <span aria-hidden="true" className="text-[0.5rem] leading-none">
+                  {day.trainingCount}x
+                </span>
+              ) : null}
+              <span className="sr-only">
+                {formatDate(day.date)}:{' '}
+                {completed
+                  ? `${day.trainingCount} trening, ${formatMinutes(day.durationMinutes)}`
+                  : 'brak treningu'}
+              </span>
             </span>
           </li>
         )
@@ -365,20 +375,15 @@ function BodyweightTrend({
           <EmptySection
             icon={Scale}
             title="Brak historii masy ciala"
-            actionLabel="Dodawanie masy ciala bedzie dostepne po potwierdzeniu zrodla danych."
+            actionLabel="Dodaj pierwszy pomiar w sekcji Pomiary, zeby zobaczyc trend wagi."
           >
-            Ten dashboard pokaze trend w kg, gdy w tabeli bodyweightEntries
-            pojawia sie wpisy dla Twojego konta.
+            Tu pojawi sie wykres ostatnich pomiarow wagi po dodaniu kilku
+            wpisow.
           </EmptySection>
         </CardBody>
       </Card>
     )
   }
-
-  const chartData = bodyweight.entries.map((entry) => ({
-    date: formatShortDate(entry.createdAt),
-    valueKg: entry.valueKg,
-  }))
 
   return (
     <Card>
@@ -396,50 +401,22 @@ function BodyweightTrend({
         </div>
       </CardHeader>
       <CardBody>
-        <div
-          aria-label={`Trend masy ciala od ${bodyweight.rangeLabel}. Ostatni wynik ${bodyweight.latest?.valueKg} kg.`}
-          className="h-56 w-full"
-          role="img"
-        >
-          <ResponsiveContainer height="100%" width="100%">
-            <LineChart data={chartData} margin={{ bottom: 8, left: 0, right: 8, top: 8 }}>
-              <CartesianGrid stroke="oklch(88% 0.014 96)" vertical={false} />
-              <XAxis
-                axisLine={false}
-                dataKey="date"
-                tick={{ fill: 'oklch(48% 0.02 245)', fontSize: 12, fontWeight: 600 }}
-                tickLine={false}
-              />
-              <YAxis
-                axisLine={false}
-                domain={['dataMin - 1', 'dataMax + 1']}
-                tick={{ fill: 'oklch(48% 0.02 245)', fontSize: 12, fontWeight: 600 }}
-                tickLine={false}
-                unit=" kg"
-                width={48}
-              />
-              <Tooltip
-                formatter={(value) => [`${value} kg`, 'Masa']}
-                labelFormatter={(label) => `Data: ${label}`}
-              />
-              <Line
-                activeDot={{ r: 5 }}
-                dataKey="valueKg"
-                dot={{ r: 3 }}
-                stroke="oklch(52% 0.17 151)"
-                strokeWidth={3}
-                type="monotone"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <BodyweightChart
+          entries={bodyweight.entries}
+          latestValueKg={bodyweight.latest?.valueKg ?? null}
+          rangeLabel={bodyweight.rangeLabel}
+        />
       </CardBody>
     </Card>
   )
 }
 
 function ProgressPhotoPreview({ photos }: { photos: ProgressPhoto[] }) {
-  if (photos.length === 0) {
+  const availablePhotos = photos.filter(
+    (photo): photo is ProgressPhoto & { url: string } => Boolean(photo.url),
+  )
+
+  if (availablePhotos.length === 0) {
     return (
       <Card>
         <CardBody padding="lg">
@@ -472,14 +449,14 @@ function ProgressPhotoPreview({ photos }: { photos: ProgressPhoto[] }) {
         </div>
       </CardHeader>
       <CardBody>
-        <div className="grid grid-cols-3 gap-2">
-          {photos.map((photo) => (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {availablePhotos.map((photo) => (
             <figure className="min-w-0" key={photo._id}>
               <img
                 alt={`Zdjecie progresu z ${formatDate(photo.capturedAt)}`}
                 className="aspect-[3/4] w-full rounded-md border border-border object-cover"
                 loading="lazy"
-                src={photo.url ?? ''}
+                src={photo.url}
               />
               <figcaption className="mt-2 text-xs font-semibold leading-5 text-muted-foreground">
                 {formatShortDate(photo.capturedAt)}
@@ -536,15 +513,15 @@ function RecentTrainingRow({ result }: { result: RecentTraining }) {
   return (
     <article className="grid gap-3 border-b border-border px-4 py-4 last:border-b-0 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
       <div className="min-w-0">
-        <h3 className="truncate text-base font-bold text-foreground">
+        <h3 className="break-words text-base font-bold text-foreground md:truncate">
           {result.routine?.name ?? 'Trening'}
         </h3>
-        <p className="mt-1 text-sm font-medium text-muted-foreground">
+        <p className="mt-1 break-words text-sm font-medium text-muted-foreground">
           {formatDate(result.completedAt)}
           {result.program ? ` - ${result.program.title}` : ''}
         </p>
       </div>
-      <dl className="grid grid-cols-3 gap-2 sm:min-w-[24rem]">
+      <dl className="grid grid-cols-1 gap-2 sm:min-w-[24rem] sm:grid-cols-3">
         <CompactFact label="Czas" value={formatMinutes(result.durationMinutes ?? 0)} />
         <CompactFact label="Serie" value={`${result.completedSets}`} />
         <CompactFact
@@ -560,7 +537,9 @@ function CompactFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-muted px-3 py-2">
       <dt className="text-xs font-bold text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-sm font-bold tabular-nums text-foreground">{value}</dd>
+      <dd className="mt-1 break-words text-sm font-bold tabular-nums text-foreground">
+        {value}
+      </dd>
     </div>
   )
 }
@@ -572,7 +551,7 @@ function EmptySection({
   title,
 }: {
   actionLabel: string
-  children: React.ReactNode
+  children: ReactNode
   icon: typeof Dumbbell
   title: string
 }) {
@@ -581,10 +560,12 @@ function EmptySection({
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
         <Icon aria-hidden="true" className="h-5 w-5" />
       </span>
-      <div>
+      <div className="min-w-0">
         <h2 className="text-lg font-bold text-foreground">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">{children}</p>
-        <p className="mt-3 text-xs font-bold leading-5 text-foreground">
+        <p className="mt-2 break-words text-sm leading-6 text-muted-foreground">
+          {children}
+        </p>
+        <p className="mt-3 break-words text-xs font-bold leading-5 text-foreground">
           {actionLabel}
         </p>
       </div>
@@ -597,17 +578,19 @@ function InlineNotice({
   icon: Icon,
   title,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   icon: typeof CalendarDays
   title: string
 }) {
   return (
     <div className="mt-4 flex items-start gap-3 rounded-md border border-border bg-muted px-4 py-3">
       <Icon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-      <div>
-        <h3 className="text-sm font-bold text-foreground">{title}</h3>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{children}</p>
-      </div>
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold text-foreground">{title}</h3>
+          <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">
+            {children}
+          </p>
+        </div>
     </div>
   )
 }
@@ -641,7 +624,13 @@ function DashboardSkeleton() {
   )
 }
 
-function DashboardError({ error }: { error: Error }) {
+function DashboardError({
+  error,
+  onRetry,
+}: {
+  error: Error
+  onRetry: () => void
+}) {
   const isAccessError = error.message.toLocaleLowerCase('pl-PL').includes('access')
 
   return (
@@ -654,7 +643,15 @@ function DashboardError({ error }: { error: Error }) {
       }
       tone={isAccessError ? 'warning' : 'error'}
     >
-      Odswiez strone albo wroc pozniej. Szczegoly: {error.message}
+      <p>
+        Odswiez strone albo wroc pozniej. Jesli problem sie powtorzy, sprawdz
+        polaczenie i zaloguj sie ponownie.
+      </p>
+      <div>
+        <Button onClick={onRetry} variant="secondary">
+          Sprobuj ponownie
+        </Button>
+      </div>
     </StateFrame>
   )
 }
@@ -674,7 +671,7 @@ function StateFrame({
   title,
   tone,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   icon: typeof AlertCircle
   title: string
   tone: 'error' | 'warning'
@@ -692,11 +689,11 @@ function StateFrame({
             <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${iconClass}`}>
               <Icon aria-hidden="true" className="h-5 w-5" />
             </span>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-lg font-bold text-foreground">{title}</h1>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              <div className="mt-2 grid gap-3 break-words text-sm leading-6 text-muted-foreground">
                 {children}
-              </p>
+              </div>
             </div>
           </div>
         </CardBody>

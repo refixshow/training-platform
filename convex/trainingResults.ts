@@ -333,6 +333,9 @@ export const getForTrainee = query({
 export const listForCoachReview = query({
   args: {
     limit: v.optional(v.number()),
+    programId: v.optional(v.id('programs')),
+    rangeEnd: v.optional(v.number()),
+    rangeStart: v.optional(v.number()),
     traineeId: v.optional(v.id('users')),
   },
   handler: async (ctx, args) => {
@@ -342,13 +345,13 @@ export const listForCoachReview = query({
     if (args.traineeId) {
       const traineeId = args.traineeId
       await requireManagedTrainee(ctx, coach._id, traineeId)
-      const results = await ctx.db
-        .query('trainingResults')
-        .withIndex('by_trainee_and_completed_at', (q) =>
-          q.eq('traineeId', traineeId),
-        )
-        .order('desc')
-        .take(limit)
+
+      const results = await queryTraineeResults(ctx, traineeId, {
+        limit,
+        programId: args.programId,
+        rangeEnd: args.rangeEnd,
+        rangeStart: args.rangeStart,
+      })
 
       return await Promise.all(results.map(async (result) => enrichResultSummary(ctx, result)))
     }
@@ -378,6 +381,44 @@ export const listForCoachReview = query({
   },
 })
 
+export const listProgramsForCoachReview = query({
+  args: {
+    traineeId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    const coach = await requireCoachAdmin(ctx)
+    await requireManagedTrainee(ctx, coach._id, args.traineeId)
+
+    const results = await ctx.db
+      .query('trainingResults')
+      .withIndex('by_trainee_and_completed_at', (q) =>
+        q.eq('traineeId', args.traineeId),
+      )
+      .order('desc')
+      .take(MAX_REVIEW_RESULTS)
+
+    const programIds = new Set<Id<'programs'>>()
+    for (const result of results) {
+      if (result.programId) {
+        programIds.add(result.programId)
+      }
+    }
+
+    const programs = await Promise.all(
+      [...programIds].map(async (programId) => ctx.db.get(programId)),
+    )
+
+    return programs
+      .filter((program): program is Doc<'programs'> => program !== null)
+      .map((program) => ({
+        _id: program._id,
+        durationWeeks: program.durationWeeks,
+        title: program.title,
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title, 'pl-PL'))
+  },
+})
+
 export const getForCoachReview = query({
   args: {
     trainingResultId: v.id('trainingResults'),
@@ -393,6 +434,33 @@ export const getForCoachReview = query({
     await requireManagedTrainee(ctx, coach._id, result.traineeId)
 
     return await getResultDetail(ctx, result)
+  },
+})
+
+export const getCoachReviewResultWithPlan = query({
+  args: {
+    traineeId: v.id('users'),
+    trainingResultId: v.id('trainingResults'),
+  },
+  handler: async (ctx, args) => {
+    const coach = await requireCoachAdmin(ctx)
+    await requireManagedTrainee(ctx, coach._id, args.traineeId)
+
+    const result = await ctx.db.get(args.trainingResultId)
+
+    if (!result || result.traineeId !== args.traineeId) {
+      throw new Error('Ten trening nie istnieje lub nalezy do innego klienta.')
+    }
+
+    const [detail, plan] = await Promise.all([
+      getResultDetail(ctx, result),
+      getRoutinePlan(ctx, result.routineId),
+    ])
+
+    return {
+      ...detail,
+      plan,
+    }
   },
 })
 
@@ -988,6 +1056,108 @@ async function getResultDetail(ctx: TrainingCtx, result: Doc<'trainingResults'>)
   return {
     ...(await enrichResultSummary(ctx, result)),
     setResults: enrichedSets,
+  }
+}
+
+async function queryTraineeResults(
+  ctx: TrainingCtx,
+  traineeId: Id<'users'>,
+  args: {
+    limit: number
+    programId?: Id<'programs'>
+    rangeEnd?: number
+    rangeStart?: number
+  },
+) {
+  if (args.programId) {
+    const programId = args.programId
+    const allForProgram = await ctx.db
+      .query('trainingResults')
+      .withIndex('by_trainee_and_program', (q) =>
+        q.eq('traineeId', traineeId).eq('programId', programId),
+      )
+      .order('desc')
+      .take(MAX_REVIEW_RESULTS)
+
+    return filterByCompletedAt(allForProgram, args.rangeStart, args.rangeEnd).slice(
+      0,
+      args.limit,
+    )
+  }
+
+  const { rangeStart, rangeEnd } = args
+
+  if (rangeStart !== undefined && rangeEnd !== undefined) {
+    return await ctx.db
+      .query('trainingResults')
+      .withIndex('by_trainee_and_completed_at', (q) =>
+        q
+          .eq('traineeId', traineeId)
+          .gte('completedAt', rangeStart)
+          .lte('completedAt', rangeEnd),
+      )
+      .order('desc')
+      .take(args.limit)
+  }
+
+  if (rangeStart !== undefined) {
+    return await ctx.db
+      .query('trainingResults')
+      .withIndex('by_trainee_and_completed_at', (q) =>
+        q.eq('traineeId', traineeId).gte('completedAt', rangeStart),
+      )
+      .order('desc')
+      .take(args.limit)
+  }
+
+  if (rangeEnd !== undefined) {
+    return await ctx.db
+      .query('trainingResults')
+      .withIndex('by_trainee_and_completed_at', (q) =>
+        q.eq('traineeId', traineeId).lte('completedAt', rangeEnd),
+      )
+      .order('desc')
+      .take(args.limit)
+  }
+
+  return await ctx.db
+    .query('trainingResults')
+    .withIndex('by_trainee_and_completed_at', (q) => q.eq('traineeId', traineeId))
+    .order('desc')
+    .take(args.limit)
+}
+
+function filterByCompletedAt(
+  results: Doc<'trainingResults'>[],
+  rangeStart?: number,
+  rangeEnd?: number,
+) {
+  return results.filter((result) => {
+    if (rangeStart !== undefined && result.completedAt < rangeStart) {
+      return false
+    }
+    if (rangeEnd !== undefined && result.completedAt > rangeEnd) {
+      return false
+    }
+    return true
+  })
+}
+
+async function getRoutinePlan(ctx: TrainingCtx, routineId: Id<'routines'>) {
+  const routine = await ctx.db.get(routineId)
+
+  if (!routine) {
+    return null
+  }
+
+  const blocks = await getRoutineBlocks(ctx, routineId)
+
+  return {
+    routine: {
+      _id: routine._id,
+      name: routine.name,
+    },
+    blocks,
   }
 }
 

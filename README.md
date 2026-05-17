@@ -45,6 +45,28 @@ That command is interactive on first run and will create the local Convex env va
 
 Convex AI guidance is installed at `convex/_generated/ai/guidelines.md`. Read it before changing Convex schema, queries, mutations, actions, auth, or migrations.
 
+## Local Demo Tools
+
+Local demo tools are off by default. Enable them only in local development:
+
+```bash
+npx convex env set DEV_TOOLS_KEY local-dev-key
+```
+
+Then set these frontend values in `.env.local`:
+
+```bash
+VITE_ENABLE_DEV_TOOLS=true
+VITE_DEV_TOOLS_KEY=local-dev-key
+```
+
+With the app running, open `/login` and use the Coach demo or Trainee demo buttons. The shortcut signs in or creates the demo account, then opens `/dev/routes` to prepare deterministic demo data and link to common coach and trainee routes.
+
+Demo credentials:
+
+- Coach: `demo.coach@example.test` / `DemoPassword1!`
+- Trainee: `demo.trainee@example.test` / `DemoPassword1!`
+
 ## Verification
 
 ```bash
@@ -62,4 +84,3 @@ npm run build
 - `FEATURES.md`: functional scope and MVP.
 - `TECH.md`: architecture and stack decisions.
 - `AGENTS.md`: instructions for future agents.
-

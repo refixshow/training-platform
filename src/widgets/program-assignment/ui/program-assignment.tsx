@@ -23,6 +23,8 @@ import { UnassignProgramButton } from '#/features/unassign-program'
 import { Button } from '#/shared/ui/button'
 import { Card, CardBody, CardHeader } from '#/shared/ui/card'
 import { Input, Select } from '#/shared/ui/input'
+import { Notice } from '#/shared/ui/notice'
+import { StateCard } from '#/shared/ui/state-card'
 
 type ProgramAssignmentRow = Doc<'programAssignments'> & {
   hasTrainingResults: boolean
@@ -93,6 +95,7 @@ function ConnectedProgramAssignment() {
     mode.kind === 'assigned'
       ? assignments.find((assignment) => assignment._id === mode.id) ?? null
       : null
+  const isAssignmentLimitReached = assignments.length >= 100
 
   return (
     <section className="flex min-h-[calc(100vh-9rem)] flex-col gap-6">
@@ -108,16 +111,18 @@ function ConnectedProgramAssignment() {
           </p>
         </div>
 
-        <Button
-          disabled={!canManageAssignments}
-          onClick={() => {
-            setMode({ kind: 'assign' })
-            setNotice(null)
-          }}
-        >
-          <Plus aria-hidden="true" className="h-4 w-4" />
-          Przypisz program
-        </Button>
+        <div className="grid sm:block [&>button]:w-full sm:[&>button]:w-auto">
+          <Button
+            disabled={!canManageAssignments}
+            onClick={() => {
+              setMode({ kind: 'assign' })
+              setNotice(null)
+            }}
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            Przypisz program
+          </Button>
+        </div>
       </header>
 
       {authQuery.isPending ? (
@@ -127,9 +132,19 @@ function ConnectedProgramAssignment() {
       ) : !canManageAssignments ? (
         <CoachAuthRequiredState />
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="grid min-w-0 gap-5">
-            {notice ? <InlineNotice message={notice} /> : null}
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+          <div
+            className={
+              mode.kind === 'assign' || mode.kind === 'assigned'
+                ? 'order-2 grid min-w-0 gap-5 lg:order-1'
+                : 'order-1 grid min-w-0 gap-5'
+            }
+          >
+            {notice ? (
+              <Notice tone={isErrorNotice(notice) ? 'error' : 'success'}>
+                {notice}
+              </Notice>
+            ) : null}
             <Card>
               <CardHeader>
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -144,7 +159,7 @@ function ConnectedProgramAssignment() {
                     <label className="relative">
                       <span className="sr-only">Szukaj przypisania</span>
                       <Input
-                        density="compact"
+                        density="default"
                         leadingIcon={<Search aria-hidden="true" className="h-4 w-4" />}
                         onChange={(event) => setSearch(event.target.value)}
                         placeholder="Klient albo program"
@@ -154,7 +169,7 @@ function ConnectedProgramAssignment() {
                     <label>
                       <span className="sr-only">Filtruj po programie</span>
                       <Select
-                        density="compact"
+                        density="default"
                         onChange={(event) => setProgramFilter(event.target.value)}
                         value={programFilter}
                       >
@@ -185,13 +200,20 @@ function ConnectedProgramAssignment() {
                 <AssignmentList
                   assignments={filteredAssignments}
                   highlightedId={createdAssignment?._id ?? null}
+                  isLimitReached={isAssignmentLimitReached}
                   onNotice={setNotice}
                 />
               )}
             </Card>
           </div>
 
-          <div className="min-w-0">
+          <div
+            className={
+              mode.kind === 'assign' || mode.kind === 'assigned'
+                ? 'order-1 min-w-0 lg:order-2'
+                : 'order-2 min-w-0'
+            }
+          >
             {optionsQuery.isPending ? (
               <AssignmentPanelSkeleton />
             ) : mode.kind === 'assign' ? (
@@ -226,67 +248,104 @@ function ConnectedProgramAssignment() {
 function AssignmentList({
   assignments,
   highlightedId,
+  isLimitReached,
   onNotice,
 }: {
   assignments: ProgramAssignmentRow[]
   highlightedId: Id<'programAssignments'> | null
+  isLimitReached: boolean
   onNotice: (message: string | null) => void
 }) {
   return (
     <div className="grid gap-0">
-      <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_8rem_8rem_8rem] gap-4 border-b border-border px-4 py-3 text-xs font-bold text-muted-foreground md:grid">
+      <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_6.5rem_6.5rem_7rem] gap-3 border-b border-border px-4 py-3 text-xs font-bold text-muted-foreground md:grid xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_8rem_8rem_8rem] xl:gap-4">
         <span>Klient</span>
         <span>Program</span>
         <span>Przypisano</span>
         <span>Status</span>
         <span className="text-right">Akcje</span>
       </div>
-      {assignments.map((assignment) => (
-        <article
-          className={
-            highlightedId === assignment._id
-              ? 'grid gap-3 border-b border-border bg-accent/65 p-4 last:border-b-0 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_8rem_8rem_8rem] md:items-center'
-              : 'grid gap-3 border-b border-border p-4 transition-colors hover:bg-muted/50 last:border-b-0 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_8rem_8rem_8rem] md:items-center'
-          }
-          key={assignment._id}
-        >
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-foreground">
-              {formatTraineeName(assignment.trainee)}
-            </p>
-            <p className="mt-1 truncate text-xs font-medium text-muted-foreground">
-              {assignment.trainee.email ?? 'Brak emaila'}
-            </p>
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-foreground">
-              {assignment.program.title}
-            </p>
-            <p className="mt-1 text-xs font-medium text-muted-foreground">
-              {assignment.program.durationWeeks} tyg. /{' '}
-              {assignment.program.routineCount} rutyn
-            </p>
-          </div>
-          <p className="text-sm font-semibold text-foreground">
-            {formatAssignmentDate(assignment.assignedAt)}
-          </p>
-          <AssignmentStatus hasTrainingResults={assignment.hasTrainingResults} />
-          <div className="flex justify-start md:justify-end">
-            <UnassignProgramButton
-              assignmentId={assignment._id}
-              disabledReason={
-                assignment.hasTrainingResults
-                  ? 'Nie mozna usunac przypisania z historia treningu'
-                  : undefined
-              }
-              onError={onNotice}
-              onUnassigned={() =>
-                onNotice('Przypisanie zostalo usuniete z listy klienta.')
-              }
-            />
-          </div>
-        </article>
-      ))}
+      {assignments.map((assignment) => {
+        const traineeName = formatTraineeName(assignment.trainee)
+        const assignmentLabel = `${assignment.program.title} dla ${traineeName}`
+
+        return (
+          <article
+            className={
+              highlightedId === assignment._id
+                ? 'grid gap-4 border-b border-border bg-accent/65 p-4 last:border-b-0 sm:p-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_6.5rem_6.5rem_7rem] md:items-center md:gap-3 md:p-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_8rem_8rem_8rem] xl:gap-4'
+                : 'grid gap-4 border-b border-border p-4 transition-colors hover:bg-muted/50 last:border-b-0 sm:p-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_6.5rem_6.5rem_7rem] md:items-center md:gap-3 md:p-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_8rem_8rem_8rem] xl:gap-4'
+            }
+            key={assignment._id}
+          >
+            <AssignmentCell label="Klient">
+              <p className="break-words text-sm font-bold text-foreground md:truncate">
+                {traineeName}
+              </p>
+              <p className="mt-1 break-all text-xs font-medium text-muted-foreground md:truncate">
+                {assignment.trainee.email ?? 'Brak emaila'}
+              </p>
+            </AssignmentCell>
+            <AssignmentCell label="Program">
+              <p className="break-words text-sm font-bold text-foreground md:truncate">
+                {assignment.program.title}
+              </p>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">
+                {assignment.program.durationWeeks} tyg. /{' '}
+                {assignment.program.routineCount} rutyn
+              </p>
+            </AssignmentCell>
+            <AssignmentCell label="Przypisano">
+              <p className="text-sm font-semibold text-foreground">
+                {formatAssignmentDate(assignment.assignedAt)}
+              </p>
+            </AssignmentCell>
+            <AssignmentCell label="Status">
+              <AssignmentStatus hasTrainingResults={assignment.hasTrainingResults} />
+            </AssignmentCell>
+            <AssignmentCell align="end" label="Akcje">
+              <UnassignProgramButton
+                assignmentId={assignment._id}
+                assignmentLabel={assignmentLabel}
+                disabledReason={
+                  assignment.hasTrainingResults
+                    ? 'Nie mozna usunac przypisania z historia treningu'
+                    : undefined
+                }
+                onError={onNotice}
+                onUnassigned={() =>
+                  onNotice('Przypisanie zostalo usuniete z listy klienta.')
+                }
+              />
+            </AssignmentCell>
+          </article>
+        )
+      })}
+      {isLimitReached ? (
+        <p className="border-t border-border px-4 py-3 text-xs font-medium leading-5 text-muted-foreground">
+          Pokazujemy najnowsze 100 przypisan. Uzyj wyszukiwarki lub filtra, aby
+          zawezic liste.
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function AssignmentCell({
+  align = 'start',
+  children,
+  label,
+}: {
+  align?: 'end' | 'start'
+  children: React.ReactNode
+  label: string
+}) {
+  return (
+    <div className={align === 'end' ? 'min-w-0 md:text-right' : 'min-w-0'}>
+      <span className="mb-1 block text-xs font-bold uppercase text-muted-foreground md:sr-only">
+        {label}
+      </span>
+      {children}
     </div>
   )
 }
@@ -322,8 +381,8 @@ function AssignmentEmptyState({ onAssign }: { onAssign: () => void }) {
           Nie ma jeszcze przypisan
         </h2>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Polacz gotowy program z klientem, zeby trainee zobaczyl go w swoim
-          widoku treningowym.
+          Polacz gotowy program z klientem, zeby zobaczyl go w swoim widoku
+          treningowym.
         </p>
         <div className="mt-5">
           <Button onClick={onAssign}>
@@ -403,7 +462,7 @@ function AssignmentCreatedState({
             <h2 className="mt-5 text-xl font-bold text-foreground">
               Przypisanie gotowe
             </h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            <p className="mt-3 break-words text-sm leading-6 text-muted-foreground">
               {assignment.program.title} jest teraz widoczny dla klienta{' '}
               {formatTraineeName(assignment.trainee)}.
             </p>
@@ -444,22 +503,6 @@ function AssignmentNoResults({ onReset }: { onReset: () => void }) {
   )
 }
 
-function InlineNotice({ message }: { message: string }) {
-  const isError = message.toLocaleLowerCase('pl-PL').includes('nie moz')
-
-  return (
-    <div
-      className={
-        isError
-          ? 'rounded-md border border-destructive/30 bg-card p-4 text-sm font-medium text-destructive'
-          : 'rounded-md border border-border bg-accent p-4 text-sm font-medium text-accent-foreground'
-      }
-    >
-      {message}
-    </div>
-  )
-}
-
 function AssignmentQueryError({ error }: { error: Error }) {
   return (
     <Card>
@@ -474,9 +517,14 @@ function AssignmentQueryError({ error }: { error: Error }) {
               Nie mozemy pobrac przypisan
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Sprawdz polaczenie z Convex i odswiez strone. Szczegoly:{' '}
-              {error.message}
+              Sprawdz polaczenie z Convex i odswiez strone.
             </p>
+            <details className="mt-3 text-sm text-muted-foreground">
+              <summary className="cursor-pointer font-bold text-foreground">
+                Szczegoly techniczne
+              </summary>
+              <p className="mt-2 break-words leading-6">{error.message}</p>
+            </details>
           </div>
         </div>
       </CardBody>
@@ -486,33 +534,22 @@ function AssignmentQueryError({ error }: { error: Error }) {
 
 function CoachAuthRequiredState() {
   return (
-    <Card>
-      <CardBody padding="lg">
-        <div className="flex max-w-2xl items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
-            <AlertCircle aria-hidden="true" className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="text-lg font-bold text-foreground">
-              Zaloguj konto trenera
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Przypisania wymagaja sesji z rola coach albo admin. Convex
-              sprawdza role przed odczytem i zapisem.
-            </p>
-          </div>
-        </div>
-      </CardBody>
-    </Card>
+    <StateCard
+      icon={<AlertCircle aria-hidden="true" />}
+      title="Zaloguj konto trenera"
+    >
+      Przypisania wymagaja sesji z rola coach albo admin. Convex sprawdza role
+      przed odczytem i zapisem.
+    </StateCard>
   )
 }
 
 function AssignmentListSkeleton() {
   return (
-    <div className="grid gap-0">
+    <div aria-hidden="true" className="grid gap-0">
       {Array.from({ length: 5 }, (_, index) => (
         <div
-          className="grid gap-3 border-b border-border p-4 last:border-b-0 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_8rem_8rem_8rem]"
+          className="grid gap-4 border-b border-border p-4 last:border-b-0 sm:p-5 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_6.5rem_6.5rem_7rem] md:gap-3 md:p-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_8rem_8rem_8rem] xl:gap-4"
           key={index}
         >
           <span className="h-10 rounded-md bg-muted" />
@@ -528,7 +565,10 @@ function AssignmentListSkeleton() {
 
 function AssignmentWorkspaceSkeleton() {
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
+    <div
+      aria-hidden="true"
+      className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]"
+    >
       <Card>
         <CardBody padding="lg">
           <div className="grid gap-4">
@@ -546,7 +586,7 @@ function AssignmentWorkspaceSkeleton() {
 
 function AssignmentPanelSkeleton() {
   return (
-    <Card>
+    <Card aria-hidden="true">
       <CardBody padding="lg">
         <div className="grid gap-4">
           <span className="h-7 w-48 rounded-md bg-muted" />
@@ -569,26 +609,19 @@ function ProgramAssignmentSetupState() {
         </h1>
       </header>
 
-      <Card>
-        <CardBody padding="lg">
-          <div className="flex max-w-2xl items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
-              <LinkIcon aria-hidden="true" className="h-5 w-5" />
-            </span>
-            <div>
-              <h2 className="text-lg font-bold text-foreground">
-                Convex nie jest jeszcze podlaczony
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Ustaw `VITE_CONVEX_URL`, zeby wlaczyc liste przypisan i formularz
-                przypisania programu klientowi.
-              </p>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
+      <StateCard
+        icon={<LinkIcon aria-hidden="true" />}
+        title="Convex nie jest jeszcze podlaczony"
+      >
+        Ustaw `VITE_CONVEX_URL`, zeby wlaczyc liste przypisan i formularz
+        przypisania programu klientowi.
+      </StateCard>
     </section>
   )
+}
+
+function isErrorNotice(message: string) {
+  return message.toLocaleLowerCase('pl-PL').includes('nie moz')
 }
 
 function formatTraineeName(

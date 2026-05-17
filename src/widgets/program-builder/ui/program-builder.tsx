@@ -300,10 +300,13 @@ function ProgramCreatedState({
                 <Plus aria-hidden="true" className="h-4 w-4" />
                 Dodaj kolejny
               </Button>
-              <Button disabled variant="ghost">
+              <a
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold text-foreground transition-[background-color,border-color,color,transform] duration-150 ease-out hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px"
+                href="/assignments"
+              >
                 <LinkIcon aria-hidden="true" className="h-4 w-4" />
-                Przypisz pozniej
-              </Button>
+                Przypisz program
+              </a>
             </div>
           </div>
         </div>

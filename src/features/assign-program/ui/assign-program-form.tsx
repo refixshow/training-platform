@@ -3,8 +3,6 @@ import type { FormikErrors } from 'formik'
 import { useFormik } from 'formik'
 import { useMutation } from 'convex/react'
 import {
-  AlertCircle,
-  CheckCircle2,
   ClipboardCheck,
   Save,
   UserRound,
@@ -19,7 +17,9 @@ import {
 } from '#/entities/program'
 import { Button } from '#/shared/ui/button'
 import { Card, CardBody, CardFooter, CardHeader, CardNotice } from '#/shared/ui/card'
+import { FormField, getFieldA11y } from '#/shared/ui/form-field'
 import { Select } from '#/shared/ui/input'
+import { StatusMessage } from '#/shared/ui/status-message'
 
 export type AssignmentProgramOption = {
   _id: Id<'programs'>
@@ -93,6 +93,12 @@ export function AssignProgramForm({
   const selectedProgram = programMap.get(formik.values.programId) ?? null
   const selectedTrainee = traineeMap.get(formik.values.traineeId) ?? null
   const isBlocked = programs.length === 0 || trainees.length === 0
+  const programError = formik.touched.programId
+    ? formik.errors.programId
+    : undefined
+  const traineeError = formik.touched.traineeId
+    ? formik.errors.traineeId
+    : undefined
   const validationSummary =
     formik.errors.programId ?? formik.errors.traineeId ?? null
 
@@ -115,9 +121,11 @@ export function AssignProgramForm({
               </p>
             </div>
 
-            <Button onClick={onCancel} type="button" variant="secondary">
-              Zamknij
-            </Button>
+            <div className="grid sm:block [&>button]:w-full sm:[&>button]:w-auto">
+              <Button onClick={onCancel} type="button" variant="secondary">
+                Zamknij
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -133,12 +141,13 @@ export function AssignProgramForm({
 
         <CardBody>
           <div className="grid gap-5">
-            <Field
-              error={formik.touched.programId ? formik.errors.programId : undefined}
+            <FormField
+              error={programError}
               label="Program"
               name="assignment-program"
             >
               <Select
+                {...getFieldA11y('assignment-program', programError)}
                 disabled={formik.isSubmitting || isBlocked}
                 id="assignment-program"
                 name="programId"
@@ -158,14 +167,15 @@ export function AssignProgramForm({
                   </option>
                 ))}
               </Select>
-            </Field>
+            </FormField>
 
-            <Field
-              error={formik.touched.traineeId ? formik.errors.traineeId : undefined}
+            <FormField
+              error={traineeError}
               label="Klient"
               name="assignment-trainee"
             >
               <Select
+                {...getFieldA11y('assignment-trainee', traineeError)}
                 disabled={formik.isSubmitting || isBlocked}
                 id="assignment-trainee"
                 name="traineeId"
@@ -181,7 +191,7 @@ export function AssignProgramForm({
                   </option>
                 ))}
               </Select>
-            </Field>
+            </FormField>
 
             <AssignmentReview
               program={selectedProgram}
@@ -206,10 +216,12 @@ export function AssignProgramForm({
             )}
           </div>
 
-          <Button disabled={formik.isSubmitting || isBlocked} type="submit">
-            <Save aria-hidden="true" className="h-4 w-4" />
-            {formik.isSubmitting ? 'Przypisywanie...' : 'Przypisz program'}
-          </Button>
+          <div className="grid sm:block [&>button]:w-full sm:[&>button]:w-auto">
+            <Button disabled={formik.isSubmitting || isBlocked} type="submit">
+              <Save aria-hidden="true" className="h-4 w-4" />
+              {formik.isSubmitting ? 'Przypisywanie...' : 'Przypisz program'}
+            </Button>
+          </div>
         </CardFooter>
       </form>
     </Card>
@@ -230,7 +242,7 @@ function AssignmentReview({
         Podglad przypisania
       </div>
       {program && trainee ? (
-        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+        <dl className="mt-4 grid gap-3 text-sm">
           <ReviewItem label="Program" value={program.title} />
           <ReviewItem label="Klient" value={formatTraineeName(trainee)} />
           <ReviewItem
@@ -250,31 +262,9 @@ function AssignmentReview({
 
 function ReviewItem({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs font-semibold text-muted-foreground">{label}</dt>
-      <dd className="mt-1 font-bold text-foreground">{value}</dd>
-    </div>
-  )
-}
-
-function Field({
-  children,
-  error,
-  label,
-  name,
-}: {
-  children: React.ReactNode
-  error?: string
-  label: string
-  name: string
-}) {
-  return (
-    <div className="grid gap-2">
-      <label className="text-sm font-semibold text-foreground" htmlFor={name}>
-        {label}
-      </label>
-      {children}
-      {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
+      <dd className="mt-1 break-words font-bold text-foreground">{value}</dd>
     </div>
   )
 }
@@ -309,29 +299,6 @@ function validateAssignmentForm(
   }
 
   return errors
-}
-
-function StatusMessage({
-  children,
-  tone,
-}: {
-  children: React.ReactNode
-  tone: 'error' | 'success'
-}) {
-  const Icon = tone === 'error' ? AlertCircle : CheckCircle2
-
-  return (
-    <p
-      className={
-        tone === 'error'
-          ? 'flex items-start gap-2 text-xs font-medium leading-5 text-destructive'
-          : 'flex items-start gap-2 text-xs font-medium leading-5 text-accent-foreground'
-      }
-    >
-      <Icon aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      <span>{children}</span>
-    </p>
-  )
 }
 
 function formatTraineeName(trainee: AssignmentTraineeOption) {

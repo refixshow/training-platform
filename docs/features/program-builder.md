@@ -85,7 +85,7 @@ architecture:
 - Programs are coach-owned records in MVP. Convex functions must enforce `ownerCoachId`, not trust route or client state.
 - Program Builder depends on Routine Builder. If no routines exist, the builder should show a blocked state that links to `/routines`.
 - Program assignment is part of the MVP product scope, but it can be implemented as a connected feature on `/assignments` rather than fully inside the `/programs` editor.
-- Exact routine scheduling inside a program is still an open product decision. Do not silently choose day-based, week-based, or flexible ordering during implementation.
+- Program routines use a flexible ordered list for MVP. This matches the current implementation and keeps assignment and trainee workout selection simple. Week-based or week-and-day scheduling is later scope unless the product explicitly promotes it.
 - Whether assigned programs are copied into a trainee-specific snapshot or stay linked to the template is still an open product decision. Do not implement assignment persistence until this is confirmed.
 - Physical delete should be conservative. If a program is assigned or referenced by training results, block deletion and explain why. A future archive state can be added if the product wants program retirement.
 
@@ -109,15 +109,15 @@ Builder sections:
 - Summary rail or footer: total weeks, total routine placements, unresolved validation issues, save action.
 - Assignment handoff: after save, offer a quiet `Przypisz program` action that navigates to `/assignments` with the program preselected when routing supports it.
 
-Scheduling UI must wait for a product decision:
+Resolved scheduling model:
 
 | Scheduling option | UX shape | Tradeoff |
 | --- | --- | --- |
-| Week-based | Each week contains an ordered routine list | Fastest MVP, but less precise for exact training days |
-| Week and day | Each week contains day slots | Clear for calendar-like plans, but heavier to edit |
-| Flexible order | Program is an ordered sequence across the full duration | Simple for trainee flow, but less calendar-specific |
+| Flexible order | Program is an ordered sequence across the full duration | Chosen for MVP because it matches current code and is simplest for coach setup and trainee choice |
+| Week-based | Each week contains an ordered routine list | Later scope if weekly planning becomes required |
+| Week and day | Each week contains day slots | Later scope if exact training days become required |
 
-Until that decision is made, design and implementation should keep `programRoutines.weekIndex`, `dayIndex`, and `order` flexible enough to support the chosen mode without data loss.
+`programRoutines.order` is the active placement coordinate for MVP. Keep optional `weekIndex` and `dayIndex` fields unused unless a later scheduling upgrade is explicitly chosen.
 
 Empty and error states:
 
@@ -163,7 +163,7 @@ Recommended schema tightening:
 
 - Add `createdAt` and `updatedAt` to `programs`.
 - Add `by_owner_coach_and_title` if duplicate prevention or title lookup needs indexed support.
-- Add `by_program_and_week` only after the scheduling mode is chosen and query needs are clear.
+- Add `by_program_and_week` only if week-based or week-and-day scheduling is promoted later and query needs are clear.
 - Consider `programAssignments.by_program` before showing assignment counts or delete guards by assigned program.
 - Consider `programAssignments.by_trainee_and_program` before enforcing duplicate assignment prevention efficiently.
 - Keep routine placements in `programRoutines`. Do not store an unbounded array of routine placements inside `programs`.
@@ -237,19 +237,18 @@ Move generic pieces into `shared/ui` only after repeated use proves they are not
 
 ## Implementation Plan
 
-1. Confirm the scheduling mode for routine placement: week-based, week-and-day, or flexible order.
-2. Confirm assignment persistence: live template reference or trainee-specific snapshot.
-3. Add program constants, schemas, and placement helpers in `src/entities/program`.
-4. Add backend payload validators and helper validation in `convex/programs.ts`.
-5. Add `list`, `get`, `create`, `update`, and guarded `remove` functions.
-6. Add timestamp fields and required indexes to `convex/schema.ts`; decide whether existing dev data needs a backfill.
-7. Add focused Convex tests for create/update validation and authorization where project test setup allows.
-8. Add `features/create-program` with Formik, Zod validation, and minimum program basics flow.
-9. Add `features/edit-program` for routine placement editing based on the chosen schedule mode.
-10. Add `widgets/program-builder` with list, empty state, loading/error states, and builder workspace.
-11. Replace placeholder `/programs` route with the program builder widget.
-12. Implement `/assignments` as a separate follow-up once assignment persistence is confirmed.
-13. Run Convex codegen/checks, `npm run typecheck`, `npm run test`, `npm run build`, and browser sanity checks for `/programs`.
+1. Confirm assignment persistence: live template reference or trainee-specific snapshot.
+2. Add program constants, schemas, and placement helpers in `src/entities/program`.
+3. Add backend payload validators and helper validation in `convex/programs.ts`.
+4. Add `list`, `get`, `create`, `update`, and guarded `remove` functions.
+5. Add timestamp fields and required indexes to `convex/schema.ts`; decide whether existing dev data needs a backfill.
+6. Add focused Convex tests for create/update validation and authorization where project test setup allows.
+7. Add `features/create-program` with Formik, Zod validation, and minimum program basics flow.
+8. Add `features/edit-program` for ordered routine placement editing.
+9. Add `widgets/program-builder` with list, empty state, loading/error states, and builder workspace.
+10. Replace placeholder `/programs` route with the program builder widget.
+11. Implement `/assignments` as a separate follow-up once assignment persistence is confirmed.
+12. Run Convex codegen/checks, `npm run typecheck`, `npm run test`, `npm run build`, and browser sanity checks for `/programs`.
 
 ## Acceptance Criteria
 
@@ -257,7 +256,7 @@ Move generic pieces into `shared/ui` only after repeated use proves they are not
 - Empty program library shows a clear empty state and one `Dodaj program` action.
 - Coach can create a program with title, description, and duration in weeks.
 - Program duration accepts only a valid integer range.
-- Coach can attach owned routines to the chosen program schedule structure.
+- Coach can attach owned routines to the flexible ordered program structure.
 - Routine placements stay ordered deterministically.
 - Coach cannot attach another coach's routine.
 - Invalid or deleted routine placements are shown inline and block save until fixed.
@@ -286,7 +285,6 @@ Move generic pieces into `shared/ui` only after repeated use proves they are not
 
 ## Open Follow-Ups
 
-- Decide whether routines are scheduled by day, week, or flexible order inside a program.
 - Decide whether assigned programs are snapshots or live references to program templates.
 - Program assignment deserves a focused implementation doc once the snapshot/live decision is resolved.
 - Program duplication and versioning are later scope, but the assignment decision may make versioning more important.

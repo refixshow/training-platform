@@ -15,16 +15,22 @@ import { Route as RoutinesRouteImport } from './routes/routines'
 import { Route as ProgressPhotosRouteImport } from './routes/progress-photos'
 import { Route as ProgramsRouteImport } from './routes/programs'
 import { Route as MyProgramRouteImport } from './routes/my-program'
-import { Route as MuscleGroupsRouteImport } from './routes/muscle-groups'
+import { Route as MeasurementsRouteImport } from './routes/measurements'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ExercisesRouteImport } from './routes/exercises'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as AssignmentsRouteImport } from './routes/assignments'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClientsIndexRouteImport } from './routes/clients.index'
 import { Route as MyProgramTrainingRouteImport } from './routes/my-program_.training'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as DevRoutesRouteImport } from './routes/dev.routes'
 import { Route as ClientsClientIdRouteImport } from './routes/clients.$clientId'
+import { Route as ClientsClientIdMeasurementsRouteImport } from './routes/clients.$clientId_.measurements'
+import { Route as ClientsClientIdResultsIndexRouteImport } from './routes/clients.$clientId_.results.index'
+import { Route as ClientsClientIdResultsTrainingResultIdRouteImport } from './routes/clients.$clientId_.results.$trainingResultId'
 
 const TrainingResultsRoute = TrainingResultsRouteImport.update({
   id: '/training-results',
@@ -56,9 +62,14 @@ const MyProgramRoute = MyProgramRouteImport.update({
   path: '/my-program',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MuscleGroupsRoute = MuscleGroupsRouteImport.update({
-  id: '/muscle-groups',
-  path: '/muscle-groups',
+const MeasurementsRoute = MeasurementsRouteImport.update({
+  id: '/measurements',
+  path: '/measurements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExercisesRoute = ExercisesRouteImport.update({
@@ -91,6 +102,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientsIndexRoute = ClientsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClientsRoute,
+} as any)
 const MyProgramTrainingRoute = MyProgramTrainingRouteImport.update({
   id: '/my-program_/training',
   path: '/my-program/training',
@@ -101,11 +117,34 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
   path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevRoutesRoute = DevRoutesRouteImport.update({
+  id: '/dev/routes',
+  path: '/dev/routes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientsClientIdRoute = ClientsClientIdRouteImport.update({
   id: '/$clientId',
   path: '/$clientId',
   getParentRoute: () => ClientsRoute,
 } as any)
+const ClientsClientIdMeasurementsRoute =
+  ClientsClientIdMeasurementsRouteImport.update({
+    id: '/$clientId_/measurements',
+    path: '/$clientId/measurements',
+    getParentRoute: () => ClientsRoute,
+  } as any)
+const ClientsClientIdResultsIndexRoute =
+  ClientsClientIdResultsIndexRouteImport.update({
+    id: '/$clientId_/results/',
+    path: '/$clientId/results/',
+    getParentRoute: () => ClientsRoute,
+  } as any)
+const ClientsClientIdResultsTrainingResultIdRoute =
+  ClientsClientIdResultsTrainingResultIdRouteImport.update({
+    id: '/$clientId_/results/$trainingResultId',
+    path: '/$clientId/results/$trainingResultId',
+    getParentRoute: () => ClientsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -114,7 +153,8 @@ export interface FileRoutesByFullPath {
   '/clients': typeof ClientsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/exercises': typeof ExercisesRoute
-  '/muscle-groups': typeof MuscleGroupsRoute
+  '/login': typeof LoginRoute
+  '/measurements': typeof MeasurementsRoute
   '/my-program': typeof MyProgramRoute
   '/programs': typeof ProgramsRoute
   '/progress-photos': typeof ProgressPhotosRoute
@@ -122,17 +162,22 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/training-results': typeof TrainingResultsRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
+  '/dev/routes': typeof DevRoutesRoute
   '/invite/$token': typeof InviteTokenRoute
   '/my-program/training': typeof MyProgramTrainingRoute
+  '/clients/': typeof ClientsIndexRoute
+  '/clients/$clientId/measurements': typeof ClientsClientIdMeasurementsRoute
+  '/clients/$clientId/results/$trainingResultId': typeof ClientsClientIdResultsTrainingResultIdRoute
+  '/clients/$clientId/results/': typeof ClientsClientIdResultsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/assignments': typeof AssignmentsRoute
-  '/clients': typeof ClientsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/exercises': typeof ExercisesRoute
-  '/muscle-groups': typeof MuscleGroupsRoute
+  '/login': typeof LoginRoute
+  '/measurements': typeof MeasurementsRoute
   '/my-program': typeof MyProgramRoute
   '/programs': typeof ProgramsRoute
   '/progress-photos': typeof ProgressPhotosRoute
@@ -140,8 +185,13 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/training-results': typeof TrainingResultsRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
+  '/dev/routes': typeof DevRoutesRoute
   '/invite/$token': typeof InviteTokenRoute
   '/my-program/training': typeof MyProgramTrainingRoute
+  '/clients': typeof ClientsIndexRoute
+  '/clients/$clientId/measurements': typeof ClientsClientIdMeasurementsRoute
+  '/clients/$clientId/results/$trainingResultId': typeof ClientsClientIdResultsTrainingResultIdRoute
+  '/clients/$clientId/results': typeof ClientsClientIdResultsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -151,7 +201,8 @@ export interface FileRoutesById {
   '/clients': typeof ClientsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/exercises': typeof ExercisesRoute
-  '/muscle-groups': typeof MuscleGroupsRoute
+  '/login': typeof LoginRoute
+  '/measurements': typeof MeasurementsRoute
   '/my-program': typeof MyProgramRoute
   '/programs': typeof ProgramsRoute
   '/progress-photos': typeof ProgressPhotosRoute
@@ -159,8 +210,13 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/training-results': typeof TrainingResultsRoute
   '/clients/$clientId': typeof ClientsClientIdRoute
+  '/dev/routes': typeof DevRoutesRoute
   '/invite/$token': typeof InviteTokenRoute
   '/my-program_/training': typeof MyProgramTrainingRoute
+  '/clients/': typeof ClientsIndexRoute
+  '/clients/$clientId_/measurements': typeof ClientsClientIdMeasurementsRoute
+  '/clients/$clientId_/results/$trainingResultId': typeof ClientsClientIdResultsTrainingResultIdRoute
+  '/clients/$clientId_/results/': typeof ClientsClientIdResultsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,7 +227,8 @@ export interface FileRouteTypes {
     | '/clients'
     | '/dashboard'
     | '/exercises'
-    | '/muscle-groups'
+    | '/login'
+    | '/measurements'
     | '/my-program'
     | '/programs'
     | '/progress-photos'
@@ -179,17 +236,22 @@ export interface FileRouteTypes {
     | '/settings'
     | '/training-results'
     | '/clients/$clientId'
+    | '/dev/routes'
     | '/invite/$token'
     | '/my-program/training'
+    | '/clients/'
+    | '/clients/$clientId/measurements'
+    | '/clients/$clientId/results/$trainingResultId'
+    | '/clients/$clientId/results/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/analytics'
     | '/assignments'
-    | '/clients'
     | '/dashboard'
     | '/exercises'
-    | '/muscle-groups'
+    | '/login'
+    | '/measurements'
     | '/my-program'
     | '/programs'
     | '/progress-photos'
@@ -197,8 +259,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/training-results'
     | '/clients/$clientId'
+    | '/dev/routes'
     | '/invite/$token'
     | '/my-program/training'
+    | '/clients'
+    | '/clients/$clientId/measurements'
+    | '/clients/$clientId/results/$trainingResultId'
+    | '/clients/$clientId/results'
   id:
     | '__root__'
     | '/'
@@ -207,7 +274,8 @@ export interface FileRouteTypes {
     | '/clients'
     | '/dashboard'
     | '/exercises'
-    | '/muscle-groups'
+    | '/login'
+    | '/measurements'
     | '/my-program'
     | '/programs'
     | '/progress-photos'
@@ -215,8 +283,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/training-results'
     | '/clients/$clientId'
+    | '/dev/routes'
     | '/invite/$token'
     | '/my-program_/training'
+    | '/clients/'
+    | '/clients/$clientId_/measurements'
+    | '/clients/$clientId_/results/$trainingResultId'
+    | '/clients/$clientId_/results/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -226,13 +299,15 @@ export interface RootRouteChildren {
   ClientsRoute: typeof ClientsRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   ExercisesRoute: typeof ExercisesRoute
-  MuscleGroupsRoute: typeof MuscleGroupsRoute
+  LoginRoute: typeof LoginRoute
+  MeasurementsRoute: typeof MeasurementsRoute
   MyProgramRoute: typeof MyProgramRoute
   ProgramsRoute: typeof ProgramsRoute
   ProgressPhotosRoute: typeof ProgressPhotosRoute
   RoutinesRoute: typeof RoutinesRoute
   SettingsRoute: typeof SettingsRoute
   TrainingResultsRoute: typeof TrainingResultsRoute
+  DevRoutesRoute: typeof DevRoutesRoute
   InviteTokenRoute: typeof InviteTokenRoute
   MyProgramTrainingRoute: typeof MyProgramTrainingRoute
 }
@@ -281,11 +356,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyProgramRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/muscle-groups': {
-      id: '/muscle-groups'
-      path: '/muscle-groups'
-      fullPath: '/muscle-groups'
-      preLoaderRoute: typeof MuscleGroupsRouteImport
+    '/measurements': {
+      id: '/measurements'
+      path: '/measurements'
+      fullPath: '/measurements'
+      preLoaderRoute: typeof MeasurementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/exercises': {
@@ -330,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/clients/': {
+      id: '/clients/'
+      path: '/'
+      fullPath: '/clients/'
+      preLoaderRoute: typeof ClientsIndexRouteImport
+      parentRoute: typeof ClientsRoute
+    }
     '/my-program_/training': {
       id: '/my-program_/training'
       path: '/my-program/training'
@@ -344,6 +433,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dev/routes': {
+      id: '/dev/routes'
+      path: '/dev/routes'
+      fullPath: '/dev/routes'
+      preLoaderRoute: typeof DevRoutesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clients/$clientId': {
       id: '/clients/$clientId'
       path: '/$clientId'
@@ -351,15 +447,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientsClientIdRouteImport
       parentRoute: typeof ClientsRoute
     }
+    '/clients/$clientId_/measurements': {
+      id: '/clients/$clientId_/measurements'
+      path: '/$clientId/measurements'
+      fullPath: '/clients/$clientId/measurements'
+      preLoaderRoute: typeof ClientsClientIdMeasurementsRouteImport
+      parentRoute: typeof ClientsRoute
+    }
+    '/clients/$clientId_/results/': {
+      id: '/clients/$clientId_/results/'
+      path: '/$clientId/results'
+      fullPath: '/clients/$clientId/results/'
+      preLoaderRoute: typeof ClientsClientIdResultsIndexRouteImport
+      parentRoute: typeof ClientsRoute
+    }
+    '/clients/$clientId_/results/$trainingResultId': {
+      id: '/clients/$clientId_/results/$trainingResultId'
+      path: '/$clientId/results/$trainingResultId'
+      fullPath: '/clients/$clientId/results/$trainingResultId'
+      preLoaderRoute: typeof ClientsClientIdResultsTrainingResultIdRouteImport
+      parentRoute: typeof ClientsRoute
+    }
   }
 }
 
 interface ClientsRouteChildren {
   ClientsClientIdRoute: typeof ClientsClientIdRoute
+  ClientsIndexRoute: typeof ClientsIndexRoute
+  ClientsClientIdMeasurementsRoute: typeof ClientsClientIdMeasurementsRoute
+  ClientsClientIdResultsTrainingResultIdRoute: typeof ClientsClientIdResultsTrainingResultIdRoute
+  ClientsClientIdResultsIndexRoute: typeof ClientsClientIdResultsIndexRoute
 }
 
 const ClientsRouteChildren: ClientsRouteChildren = {
   ClientsClientIdRoute: ClientsClientIdRoute,
+  ClientsIndexRoute: ClientsIndexRoute,
+  ClientsClientIdMeasurementsRoute: ClientsClientIdMeasurementsRoute,
+  ClientsClientIdResultsTrainingResultIdRoute:
+    ClientsClientIdResultsTrainingResultIdRoute,
+  ClientsClientIdResultsIndexRoute: ClientsClientIdResultsIndexRoute,
 }
 
 const ClientsRouteWithChildren =
@@ -372,13 +498,15 @@ const rootRouteChildren: RootRouteChildren = {
   ClientsRoute: ClientsRouteWithChildren,
   DashboardRoute: DashboardRoute,
   ExercisesRoute: ExercisesRoute,
-  MuscleGroupsRoute: MuscleGroupsRoute,
+  LoginRoute: LoginRoute,
+  MeasurementsRoute: MeasurementsRoute,
   MyProgramRoute: MyProgramRoute,
   ProgramsRoute: ProgramsRoute,
   ProgressPhotosRoute: ProgressPhotosRoute,
   RoutinesRoute: RoutinesRoute,
   SettingsRoute: SettingsRoute,
   TrainingResultsRoute: TrainingResultsRoute,
+  DevRoutesRoute: DevRoutesRoute,
   InviteTokenRoute: InviteTokenRoute,
   MyProgramTrainingRoute: MyProgramTrainingRoute,
 }

@@ -74,7 +74,7 @@ architecture:
 - The trainee view is read-only in MVP. It shows assigned training content and prepares the handoff to workout logging, but does not let trainees edit programs or routines.
 - Trainees can only see programs assigned to their own user id. Coach-owned program library queries must not be reused directly for this screen.
 - The exact assigned-program persistence model is unresolved: live reference versus trainee-specific snapshot. This view must work with the final chosen model and should not assume one silently.
-- The exact program schedule model is unresolved: routines may be arranged by week, week/day, or flexible order. The view should render the chosen structure clearly and avoid inventing calendar behavior before the decision is made.
+- Program routines use a flexible ordered list for MVP. The trainee view should render that sequence clearly and avoid calendar behavior unless week/day scheduling is explicitly promoted later.
 - Exercise media is supportive, not required. Missing photos or video links must not block viewing or starting a routine.
 - Workout logging is a separate feature. This page should expose a clear start/continue affordance once logging exists, but this document does not define submission payloads.
 
@@ -86,23 +86,23 @@ Primary layout:
 
 - Header: current program title, coach/program context if available, duration in weeks.
 - Current training block: the next/current routine with a clear `Rozpocznij trening` or disabled future handoff.
-- Program structure: week/day/sequence list depending on the final scheduling mode.
+- Program structure: ordered routine sequence.
 - Routine preview: exercise list with target sets, units, rest duration, target RPE, instructions, and optional media.
 - Secondary area: assigned date and lightweight progress context once training results exist.
 
-Program structure display options:
+Program structure display:
 
 | Schedule model | Trainee display | Notes |
 | --- | --- | --- |
-| Week-based | Weeks as sections with ordered routines | Simple MVP and easy to scan |
-| Week and day | Week tabs/sections with day rows | Best when exact training days matter |
-| Flexible order | Ordered routine sequence with completion state | Best for simple self-paced plans |
+| Flexible order | Ordered routine sequence with completion state | Chosen for MVP because it matches current program data and supports simple self-paced plans |
+| Week-based | Weeks as sections with ordered routines | Later scope if weekly planning becomes required |
+| Week and day | Week tabs/sections with day rows | Later scope if exact training days matter |
 
 Current/next routine behavior:
 
 - Before workout logging exists, show a routine preview and a disabled or placeholder start action with no fake submission.
 - After workout logging exists, the primary action should open the current routine logging flow.
-- If no routine can be determined because schedule rules are unresolved or data is empty, show a calm empty state and explain that the coach has not added workouts yet.
+- If no routine can be determined because the ordered list is empty, show a calm empty state and explain that the coach has not added workouts yet.
 
 Routine preview content:
 
@@ -225,18 +225,17 @@ Do not move these into `shared/ui` in the first pass. They are domain-specific u
 ## Implementation Plan
 
 1. Confirm assigned program persistence: live template reference or trainee-specific snapshot.
-2. Confirm program schedule display mode: week-based, week-and-day, or flexible order.
-3. Decide final trainee route naming and navigation placement.
-4. Add assigned program view-model types and helpers in `src/entities/program`.
-5. Add routine target display helpers in `src/entities/routine`.
-6. Add `listForTrainee` and `getAssignedProgram` in `convex/programAssignments.ts`.
-7. Add required indexes to `convex/schema.ts` if current indexes are not enough for safe lookups.
-8. Add focused Convex tests for trainee isolation and assigned program resolution.
-9. Add `features/view-assigned-program` for query binding and selected assignment state.
-10. Add `widgets/trainee-program-view` with loading, empty, error, unauthorized, and populated states.
-11. Add route candidate `src/routes/my-program.tsx` or the chosen trainee route.
-12. Add mobile-first browser checks and ensure routine targets, units, and media states are legible.
-13. Run Convex codegen/checks, `npm run typecheck`, `npm run test`, and `npm run build`.
+2. Decide final trainee route naming and navigation placement.
+3. Add assigned program view-model types and helpers in `src/entities/program`.
+4. Add routine target display helpers in `src/entities/routine`.
+5. Add `listForTrainee` and `getAssignedProgram` in `convex/programAssignments.ts`.
+6. Add required indexes to `convex/schema.ts` if current indexes are not enough for safe lookups.
+7. Add focused Convex tests for trainee isolation and assigned program resolution.
+8. Add `features/view-assigned-program` for query binding and selected assignment state.
+9. Add `widgets/trainee-program-view` with loading, empty, error, unauthorized, and populated states.
+10. Add route candidate `src/routes/my-program.tsx` or the chosen trainee route.
+11. Add mobile-first browser checks and ensure routine targets, units, and media states are legible.
+12. Run Convex codegen/checks, `npm run typecheck`, `npm run test`, and `npm run build`.
 
 ## Acceptance Criteria
 
@@ -244,7 +243,7 @@ Do not move these into `shared/ui` in the first pass. They are domain-specific u
 - Trainee with no assigned programs sees a clear empty state.
 - Trainee with one assigned program sees title, description, duration, assigned date, and routine structure.
 - Trainee with multiple assigned programs can choose between them or sees a clear current/default program rule.
-- Program routines render in the final chosen schedule structure.
+- Program routines render as a flexible ordered sequence.
 - Routine preview shows exercises, set targets, target RPE, rest duration, instructions, and optional media.
 - Numeric targets always include units and context.
 - Missing exercise photo or video does not create an error state.
@@ -272,7 +271,6 @@ Do not move these into `shared/ui` in the first pass. They are domain-specific u
 ## Open Follow-Ups
 
 - Decide whether assigned programs are snapshots or live references to program templates.
-- Decide whether routine placement is week-based, week-and-day, or flexible order.
 - Decide how to choose the current routine when multiple routines are available.
 - Define the workout logging handoff once the training submission feature is documented.
 - Define trainee navigation shell and final route naming.

@@ -18,7 +18,7 @@ scope:
     - Empty state create action when no programs exist.
     - Program basics form: title, description, duration in weeks.
     - Routine selection from coach-owned routines.
-    - Routine placement according to the chosen scheduling mode.
+    - Routine placement as a flexible ordered list.
     - Program review before save.
     - Formik form state for nested routine placements.
     - Zod validation for frontend payload shape.
@@ -87,7 +87,7 @@ This document is narrower than `docs/features/program-builder.md`: it defines on
 - Programs are coach-owned records. The client must not send a trusted `ownerCoachId`; Convex derives it from the authenticated user.
 - Creating a program depends on existing routines. If no routines exist, the create flow is blocked and links the coach to `/routines`.
 - Assignment is a separate feature. After creation, the UI can offer a `Przypisz program` handoff, but it must not implement assignment persistence here.
-- Routine scheduling inside a program is still open: week-based, week-and-day, or flexible order. Implementation must ask before committing to one scheduling mode.
+- Program routines use a flexible ordered list for MVP. This matches current code and keeps the first-save flow simple. Week-based or week-and-day scheduling is later scope unless the product explicitly promotes it.
 - Assigned programs as snapshots versus live references is still open. Do not add snapshot/version fields during create-program work unless that decision is resolved.
 - Program duplication and versioning are later scope.
 
@@ -127,7 +127,7 @@ Priority: P1
 
 As a coach, I want to choose owned routines and place them in the program structure, so that trainees can follow a planned sequence later.
 
-Independent test: select, reorder, remove, and save routine placements using the chosen scheduling mode.
+Independent test: select, reorder, remove, and save routine placements as a flexible ordered list.
 
 Acceptance:
 
@@ -160,10 +160,10 @@ Recommended layout:
 - Header: `Nowy program`, close/back action, primary save action.
 - Basics section: title, description, duration in weeks.
 - Routine source: compact searchable routine picker with exercise count and set count.
-- Program structure: the selected scheduling surface.
+- Program structure: the flexible ordered routine list.
 - Review footer: duration, number of routine placements, unresolved validation count, save state.
 
-Scheduling decision gate:
+Scheduling model:
 
 | Option | Create UI | Stored placement shape | Implementation note |
 | --- | --- | --- | --- |
@@ -171,7 +171,7 @@ Scheduling decision gate:
 | Week and day | Week panels containing day slots | `weekIndex`, `dayIndex`, and `order` | More precise, heavier UI and validation |
 | Flexible order | One ordered sequence across the duration | `order`; week/day omitted or derived later | Simplest UI, weakest calendar semantics |
 
-Do not implement one of these modes silently. The UI and mutation payload should be shaped after the programmer chooses the scheduling mode.
+Flexible order is the chosen MVP mode. The other modes stay documented only as future alternatives if calendar semantics become necessary.
 
 Required states:
 
@@ -209,7 +209,7 @@ Recommended additions before implementation:
 
 - Add `createdAt` and `updatedAt` to `programs` for list sorting and audit clarity.
 - Add `by_owner_coach_and_updated_at` if the program list will sort by recent updates.
-- Add `by_program_and_week` or a similar index only after the scheduling mode is chosen and query needs prove it useful.
+- Add `by_program_and_week` or a similar index only if week-based or week-and-day scheduling is promoted later and query needs prove it useful.
 - Keep routine placements in `programRoutines`. Do not store routine arrays on the `programs` document.
 
 Creation should be transactional:
@@ -217,7 +217,7 @@ Creation should be transactional:
 1. Validate the authenticated user and coach role.
 2. Validate basics.
 3. Validate each routine exists and belongs to the coach.
-4. Validate placement coordinates against the selected scheduling mode.
+4. Validate placement order for the flexible list.
 5. Insert `programs`.
 6. Insert ordered `programRoutines`.
 7. Return the created program id and summary.
@@ -232,7 +232,7 @@ Functions needed for this feature:
 - `create`: public mutation, authenticated coach only, validates payload and inserts parent and child records.
 - `list`: public query, authenticated coach only, returns enough program summaries for the `/programs` library after save.
 
-Potential payload shape after scheduling decision:
+MVP payload shape:
 
 ```ts
 {
@@ -287,17 +287,16 @@ Do not move these into `shared/ui` during the first pass. They are domain-specif
 
 ## Implementation Plan
 
-1. Confirm the scheduling mode: week-based, week-and-day, or flexible order.
-2. Add program create schemas and placement helpers in `src/entities/program`.
-3. Add routine option summary type/helpers in `src/entities/routine` if they do not already exist.
-4. Add `createdAt` and `updatedAt` to `programs`; plan a dev-data backfill if existing rows are present.
-5. Add `convex/programs.ts` with `listCreateOptions`, `create`, and `list`.
-6. Add Convex tests for create validation, routine ownership, and role authorization where project test setup allows.
-7. Add `src/features/create-program` with Formik and Zod-backed validation.
-8. Add the selected `ProgramPlacementPlanner` UI based on the scheduling decision.
-9. Add `src/widgets/program-builder` with empty state, list shell, and create workspace.
-10. Replace the placeholder `/programs` route with the widget.
-11. Verify with Convex codegen/checks, typecheck, tests, build, and browser checks for `/programs`.
+1. Add program create schemas and placement helpers in `src/entities/program`.
+2. Add routine option summary type/helpers in `src/entities/routine` if they do not already exist.
+3. Add `createdAt` and `updatedAt` to `programs`; plan a dev-data backfill if existing rows are present.
+4. Add `convex/programs.ts` with `listCreateOptions`, `create`, and `list`.
+5. Add Convex tests for create validation, routine ownership, and role authorization where project test setup allows.
+6. Add `src/features/create-program` with Formik and Zod-backed validation.
+7. Add the flexible ordered `ProgramPlacementPlanner` UI.
+8. Add `src/widgets/program-builder` with empty state, list shell, and create workspace.
+9. Replace the placeholder `/programs` route with the widget.
+10. Verify with Convex codegen/checks, typecheck, tests, build, and browser checks for `/programs`.
 
 ## Acceptance Criteria
 
@@ -306,7 +305,7 @@ Do not move these into `shared/ui` during the first pass. They are domain-specif
 - Coach can enter title, description, and duration in weeks.
 - Title and duration validation is shown inline.
 - Coach can select only owned routines.
-- Coach can place at least one routine according to the confirmed scheduling mode.
+- Coach can place at least one routine in the flexible ordered list.
 - Routine placements preserve deterministic order.
 - Save creates one program and its routine placements in Convex.
 - Created program appears in the coach's program library after save.
@@ -331,7 +330,6 @@ Do not move these into `shared/ui` during the first pass. They are domain-specif
 
 ## Open Follow-Ups
 
-- Decide the scheduling mode for routines inside programs.
 - Decide whether assignment uses live program references or trainee-specific snapshots.
 - Decide whether empty programs can be saved as drafts or whether at least one routine placement is mandatory.
 - Add a focused edit-program document if editing behavior diverges from first creation.

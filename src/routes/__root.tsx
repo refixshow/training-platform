@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient } from '@tanstack/react-query'
 import {
   HeadContent,
+  Navigate,
   Outlet,
   Scripts,
   createRootRouteWithContext,
@@ -13,8 +14,8 @@ import { Authenticated, AuthLoading, Unauthenticated, useQuery } from 'convex/re
 
 import { CoachShell } from '#/app/coach-shell'
 import { TraineeShell } from '#/app/trainee-shell'
-import { EmailPasswordAuthScreen } from '#/features/auth-email-password'
 import { hasConfiguredConvexUrl } from '#/shared/lib/convex-env'
+import { isDevToolsEnabled } from '#/shared/lib/dev-tools'
 import { api } from '../../convex/_generated/api'
 
 import appCss from '../styles.css?url'
@@ -51,13 +52,19 @@ export const Route = createRootRouteWithContext<{
 })
 
 function RootComponent() {
+  const isDevRoute = useIsDevRoute()
   const isInviteRoute = useIsInviteRoute()
+  const isLoginRoute = useIsLoginRoute()
 
   if (!hasConfiguredConvexUrl()) {
     return (
       <RootDocument>
-        {isInviteRoute ? (
+        {isDevRoute && isDevToolsEnabled() ? (
           <Outlet />
+        ) : isInviteRoute ? (
+          <Outlet />
+        ) : isLoginRoute ? (
+          <Navigate search={{ clientId: undefined }} to="/clients" />
         ) : (
           <CoachShell showAuthActions={false}>
             <Outlet />
@@ -73,7 +80,11 @@ function RootComponent() {
         <AuthLoadingScreen />
       </AuthLoading>
       <Unauthenticated>
-        {isInviteRoute ? <Outlet /> : <EmailPasswordAuthScreen />}
+        {isInviteRoute || isLoginRoute || (isDevRoute && isDevToolsEnabled()) ? (
+          <Outlet />
+        ) : (
+          <Navigate to="/login" />
+        )}
       </Unauthenticated>
       <Authenticated>
         <AuthenticatedApp />
@@ -83,7 +94,9 @@ function RootComponent() {
 }
 
 function AuthenticatedApp() {
+  const isDevRoute = useIsDevRoute()
   const isInviteRoute = useIsInviteRoute()
+  const isLoginRoute = useIsLoginRoute()
   const user = useQuery(api.auth.currentUser)
 
   if (user === undefined) {
@@ -92,6 +105,14 @@ function AuthenticatedApp() {
 
   if (isInviteRoute) {
     return <Outlet />
+  }
+
+  if (isDevRoute && isDevToolsEnabled()) {
+    return <Outlet />
+  }
+
+  if (isLoginRoute) {
+    return <Navigate to="/" />
   }
 
   if (user?.role === 'coach' || user?.role === 'admin') {
@@ -115,6 +136,18 @@ function useIsInviteRoute() {
   })
 }
 
+function useIsDevRoute() {
+  return useRouterState({
+    select: (state) => state.location.pathname.startsWith('/dev/'),
+  })
+}
+
+function useIsLoginRoute() {
+  return useRouterState({
+    select: (state) => state.location.pathname === '/login',
+  })
+}
+
 function AuthLoadingScreen() {
   return (
     <main className="grid min-h-screen place-items-center bg-background px-4 text-center text-foreground">
@@ -130,7 +163,7 @@ function AuthLoadingScreen() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" className="bg-background text-foreground">
+    <html lang="pl" className="bg-background text-foreground">
       <head>
         <HeadContent />
       </head>

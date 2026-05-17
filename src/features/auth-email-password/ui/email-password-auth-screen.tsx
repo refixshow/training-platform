@@ -5,6 +5,11 @@ import { AlertCircle, Dumbbell, LogIn, UserPlus } from 'lucide-react'
 import { Button } from '#/shared/ui/button'
 import { Card, CardBody } from '#/shared/ui/card'
 import { Input } from '#/shared/ui/input'
+import {
+  demoAccounts,
+  isDevToolsEnabled,
+  type DemoRole,
+} from '#/shared/lib/dev-tools'
 
 type AuthMode = 'signIn' | 'signUp'
 
@@ -23,6 +28,7 @@ export function EmailPasswordAuthScreen({
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [demoRole, setDemoRole] = useState<DemoRole | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
 
@@ -88,6 +94,39 @@ export function EmailPasswordAuthScreen({
       setStatus(null)
       setError(getAuthErrorMessage(caughtError, mode))
     } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleDemoSignIn(role: DemoRole) {
+    const account = demoAccounts[role]
+
+    setError(null)
+    setStatus(`Przygotowuje konto demo: ${account.name}.`)
+    setIsSubmitting(true)
+    setDemoRole(role)
+
+    try {
+      try {
+        await signIn('password', {
+          email: account.email,
+          flow: 'signIn',
+          password: account.password,
+        })
+      } catch {
+        await signIn('password', {
+          email: account.email,
+          flow: 'signUp',
+          name: account.name,
+          password: account.password,
+        })
+      }
+
+      window.location.assign(`/dev/routes?setup=${role}`)
+    } catch (caughtError) {
+      setStatus(null)
+      setError(getAuthErrorMessage(caughtError, 'signIn'))
+      setDemoRole(null)
       setIsSubmitting(false)
     }
   }
@@ -206,6 +245,34 @@ export function EmailPasswordAuthScreen({
                     : 'Utworz konto'}
               </Button>
             </form>
+
+            {isDevToolsEnabled() ? (
+              <div className="mt-5 border-t border-border pt-5">
+                <div className="grid gap-2">
+                  <p className="text-xs font-bold text-muted-foreground">
+                    Local demo
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Button
+                      disabled={isSubmitting}
+                      onClick={() => void handleDemoSignIn('coach')}
+                      type="button"
+                      variant="secondary"
+                    >
+                      {demoRole === 'coach' ? 'Lacze...' : 'Coach demo'}
+                    </Button>
+                    <Button
+                      disabled={isSubmitting}
+                      onClick={() => void handleDemoSignIn('trainee')}
+                      type="button"
+                      variant="secondary"
+                    >
+                      {demoRole === 'trainee' ? 'Lacze...' : 'Trainee demo'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-5 border-t border-border pt-5">
               <Button

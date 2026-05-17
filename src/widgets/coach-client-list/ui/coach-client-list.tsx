@@ -330,18 +330,27 @@ function LastTrainingCell({ client }: { client: ClientRow }) {
     )
   }
 
+  const result = client.latestTrainingResult
+
   return (
-    <div className="min-w-0">
+    <Link
+      className="grid min-w-0 gap-1 rounded-md px-1 -mx-1 py-1 transition-colors hover:bg-muted/40 focus-visible:bg-muted/50 focus-visible:outline-none"
+      params={{
+        clientId: client.trainee._id,
+        trainingResultId: result._id,
+      }}
+      to="/clients/$clientId/results/$trainingResultId"
+    >
       <p className="truncate text-sm font-bold text-foreground">
-        {client.latestTrainingResult.routineName ?? 'Trening'}
+        {result.routineName ?? 'Trening'}
       </p>
-      <p className="mt-1 text-xs font-semibold text-muted-foreground">
-        {formatDate(client.latestTrainingResult.completedAt)}
-        {client.latestTrainingResult.durationMinutes
-          ? `, ${formatMinutes(client.latestTrainingResult.durationMinutes)}`
+      <p className="text-xs font-semibold text-muted-foreground">
+        <span className="tabular-nums">{formatDate(result.completedAt)}</span>
+        {result.durationMinutes
+          ? `, ${formatMinutes(result.durationMinutes)}`
           : ''}
       </p>
-    </div>
+    </Link>
   )
 }
 
@@ -426,6 +435,25 @@ function ClientDetailContent({ detail }: { detail: ClientDetailData }) {
             dashboard podopiecznego. Pelne wykresy i zdjecia progresu zostaja
             w osobnym detail pass.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-secondary px-3 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              params={{ clientId: detail.trainee._id }}
+              search={{ programId: undefined, range: '4w' }}
+              to="/clients/$clientId/results"
+            >
+              Zobacz wszystkie treningi
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
+            <Link
+              className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border bg-secondary px-3 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              params={{ clientId: detail.trainee._id }}
+              to="/clients/$clientId/measurements"
+            >
+              Pomiary
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
         <StatusBadge status={detail.status} />
       </header>

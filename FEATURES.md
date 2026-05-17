@@ -21,7 +21,7 @@ A trainee can:
 - Submit training summaries.
 - View personal statistics.
 - Upload progress photos.
-- Track bodyweight and progress over time.
+- Log periodic body measurements (weight, body fat, 14 circumferences, optional progress photo) and review trends per metric.
 
 ### Coach
 
@@ -402,13 +402,16 @@ These features should not block the first version:
 
 ## Open Decisions
 
-- Should routines be scheduled by day, week, or flexible order inside a program?
 - Should assigned programs be copied into a user-specific snapshot or stay linked to the original program?
 - Should trainees be able to edit submitted training results?
 - Should coaches approve edited results?
 - Should skipped workout sets be saved explicitly, inferred from absent result rows, or captured with a skip reason?
 - Should progress photos be visible to coach by default?
-- Should bodyweight be logged independently, attached to photos, attached to training summaries, or all three?
+- ~~Should bodyweight be logged independently, attached to photos, attached to training summaries, or all three?~~ Resolved: trainees log bodyweight (and other measurements) through the dedicated `bodyMeasurements` feature; see `src/features/log-body-measurement/_docs/adr/0001-unified-body-measurements-table.md`.
 - Should activity map use calendar-style intensity, simple completion dots, or both?
+
+## Resolved MVP Decisions
+
+- Program routines use a flexible ordered list for MVP. Week/day scheduling is later scope unless the product explicitly promotes it.
 
 

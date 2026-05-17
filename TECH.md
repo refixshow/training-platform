@@ -143,7 +143,7 @@ Expected product components:
 - Muscle group selector.
 - Routine exercise editor.
 - Set target editor.
-- Program week/day planner.
+- Program routine planner.
 - Workout logging panel.
 - Training result summary.
 - Progress photo slider.

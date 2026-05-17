@@ -84,7 +84,7 @@ architecture:
 ## Product Decisions
 
 - Routines are coach-owned records in MVP. The current schema already models `ownerCoachId`, and Convex functions should enforce that boundary.
-- A routine is a reusable training unit, not a scheduled program entry. Scheduling routines by week, day, or flexible order belongs to the Program Builder open decision and should not be resolved in this feature.
+- A routine is a reusable training unit, not a scheduled program entry. Program Builder uses a flexible ordered routine list for MVP; week/day scheduling is later scope.
 - Routine set fields are driven by exercise type. The builder must not show irrelevant target fields for a selected exercise.
 - Supersets are optional in MVP. They can be represented as a lightweight group key on exercise blocks, with UI kept simple enough to replace later.
 - Physical delete should be conservative. If a routine is referenced by programs or training results, block deletion and explain why. A future archive state can be added if the product wants routine retirement.
@@ -280,7 +280,7 @@ Move a component into `shared/ui` only after a generic interaction clearly repea
 
 ## Open Follow-Ups
 
-- Program scheduling remains unresolved: routines may later be attached by week, day, or flexible order inside programs.
+- Program scheduling is flexible ordered routine placement for MVP. Week/day attachment is later scope unless explicitly promoted.
 - Routine templates are later scope and should not shape the MVP data model beyond keeping routines reusable.
 - Warm-up sets, tempo, and coach-only notes need separate product decisions before becoming required builder fields.
 - If routine sizes become large, child record replacement during update may need a batched or diff-based mutation strategy.

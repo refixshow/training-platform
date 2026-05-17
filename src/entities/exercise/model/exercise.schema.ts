@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { muscleGroupValues } from '../../muscle-group'
 import {
   exerciseEquipmentValues,
   exerciseTypeValues,
@@ -15,8 +16,13 @@ export const exerciseFormSchema = z
       .trim()
       .min(1, 'Wpisz nazwe cwiczenia.')
       .max(120, 'Nazwa cwiczenia moze miec maksymalnie 120 znakow.'),
-    primaryMuscleGroupId: z.string().min(1, 'Wybierz glowna grupe miesniowa.'),
-    secondaryMuscleGroupIds: z.array(z.string()),
+    primaryMuscleGroup: z
+      .enum(muscleGroupValues)
+      .or(z.literal(''))
+      .refine((value) => value !== '', {
+        message: 'Wybierz glowna grupe miesniowa.',
+      }),
+    secondaryMuscleGroups: z.array(z.enum(muscleGroupValues)),
     type: z.enum(exerciseTypeValues),
     videoUrl: z
       .string()
@@ -37,13 +43,15 @@ export const exerciseFormSchema = z
     }
 
     if (
-      values.primaryMuscleGroupId &&
-      values.secondaryMuscleGroupIds.includes(values.primaryMuscleGroupId)
+      values.primaryMuscleGroup &&
+      values.secondaryMuscleGroups.includes(
+        values.primaryMuscleGroup as (typeof muscleGroupValues)[number],
+      )
     ) {
       ctx.addIssue({
         code: 'custom',
         message: 'Dodatkowe grupy nie moga powtarzac grupy glownej.',
-        path: ['secondaryMuscleGroupIds'],
+        path: ['secondaryMuscleGroups'],
       })
     }
   })
@@ -55,8 +63,8 @@ export const emptyExerciseFormValues: ExerciseFormValues = {
   equipment: 'none',
   instructionText: '',
   name: '',
-  primaryMuscleGroupId: '',
-  secondaryMuscleGroupIds: [],
+  primaryMuscleGroup: '',
+  secondaryMuscleGroups: [],
   type: 'weight_reps',
   videoUrl: '',
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormikErrors } from 'formik'
 import { useFormik } from 'formik'
-import { AlertCircle, CheckCircle2, ListPlus, Save } from 'lucide-react'
+import { ListPlus, Save } from 'lucide-react'
 import { useMutation } from 'convex/react'
 import type { Id } from '../../../../convex/_generated/dataModel'
 import { api } from '../../../../convex/_generated/api'
@@ -14,32 +14,48 @@ import {
   splitInstructionText,
   type ExerciseFormValues,
 } from '#/entities/exercise'
-import type { MuscleGroupOption } from '#/entities/muscle-group'
+import {
+  muscleGroupOptions,
+  type MuscleGroup,
+} from '#/entities/muscle-group'
 import { Button } from '#/shared/ui/button'
 import {
   CardBody,
   CardFooter,
   CardForm,
   CardHeader,
-  CardNotice,
 } from '#/shared/ui/card'
+import { FieldError, FormField, getFieldA11y } from '#/shared/ui/form-field'
 import { Input, Select, Textarea } from '#/shared/ui/input'
+import { StatusMessage } from '#/shared/ui/status-message'
 
 interface CreateExerciseFormProps {
-  muscleGroups: MuscleGroupOption[]
+  exerciseId?: Id<'exercises'>
+  initialValues?: ExerciseFormValues
+  mode?: 'create' | 'edit'
+  onCancel?: () => void
   onCreated?: () => void
+  onSaved?: () => void
 }
 
+const muscleGroups = muscleGroupOptions
+
 export function CreateExerciseForm({
-  muscleGroups,
+  exerciseId,
+  initialValues = emptyExerciseFormValues,
+  mode = 'create',
+  onCancel,
   onCreated,
+  onSaved,
 }: CreateExerciseFormProps) {
   const createExercise = useMutation(api.exercises.create)
+  const updateExercise = useMutation(api.exercises.update)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
 
   const formik = useFormik<ExerciseFormValues>({
-    initialValues: emptyExerciseFormValues,
+    enableReinitialize: true,
+    initialValues,
     validate: validateExerciseForm,
     validateOnBlur: true,
     validateOnChange: false,
@@ -50,22 +66,37 @@ export function CreateExerciseForm({
       const parsed = exerciseFormSchema.parse(values)
 
       try {
-        await createExercise({
+        const payload = {
           customEquipment: parsed.customEquipment?.trim() || undefined,
           equipment: parsed.equipment,
           instructions: splitInstructionText(parsed.instructionText),
           name: parsed.name,
-          primaryMuscleGroupId:
-            parsed.primaryMuscleGroupId as Id<'muscleGroups'>,
-          secondaryMuscleGroupIds:
-            parsed.secondaryMuscleGroupIds as Id<'muscleGroups'>[],
+          primaryMuscleGroup: parsed.primaryMuscleGroup as MuscleGroup,
+          secondaryMuscleGroups: parsed.secondaryMuscleGroups as MuscleGroup[],
           type: parsed.type,
           videoUrl: parsed.videoUrl?.trim() || undefined,
-        })
+        }
 
-        helpers.resetForm()
-        setSubmitSuccess('Cwiczenie zostalo dodane do biblioteki.')
-        onCreated?.()
+        if (mode === 'edit' && exerciseId) {
+          await updateExercise({
+            exerciseId,
+            ...payload,
+          })
+        } else {
+          await createExercise(payload)
+        }
+
+        if (mode === 'create') {
+          helpers.resetForm()
+          onCreated?.()
+        }
+
+        setSubmitSuccess(
+          mode === 'edit'
+            ? 'Cwiczenie zostalo zaktualizowane.'
+            : 'Cwiczenie zostalo dodane do biblioteki.',
+        )
+        onSaved?.()
       } catch (error) {
         setSubmitError(
           error instanceof Error
@@ -78,8 +109,8 @@ export function CreateExerciseForm({
     },
   })
 
-  const selectedPrimary = formik.values.primaryMuscleGroupId
-  const canSubmit = muscleGroups.length > 0 && !formik.isSubmitting
+  const selectedPrimary = formik.values.primaryMuscleGroup
+  const canSubmit = !formik.isSubmitting
 
   return (
     <CardForm
@@ -89,23 +120,17 @@ export function CreateExerciseForm({
       <CardHeader>
         <div className="flex items-center gap-2 text-sm font-semibold text-primary">
           <ListPlus aria-hidden="true" className="h-4 w-4" />
-          Nowe cwiczenie
+          {mode === 'edit' ? 'Edycja cwiczenia' : 'Nowe cwiczenie'}
         </div>
         <h2 className="text-xl font-bold text-foreground">
-          Dane do rutyn i wynikow
+          {mode === 'edit' ? 'Aktualizuj dane biblioteki' : 'Dane do rutyn i wynikow'}
         </h2>
         <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-          Wypelnij tylko pola wymagane. Media i instrukcje mozna uzupelnic
-          pozniej, kiedy biblioteka zacznie obslugiwac edycje.
+          {mode === 'edit'
+            ? 'Zmien nazwe, typ wyniku, sprzet, klasyfikacje albo materialy pomocnicze.'
+            : 'Wypelnij tylko pola wymagane. Media i instrukcje mozna uzupelnic pozniej.'}
         </p>
       </CardHeader>
-
-      {muscleGroups.length === 0 ? (
-        <CardNotice>
-          Najpierw dodaj grupy miesniowe. Bez nich cwiczenie nie ma glownej
-          klasyfikacji.
-        </CardNotice>
-      ) : null}
 
       <CardBody>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -119,11 +144,9 @@ export function CreateExerciseForm({
             </h3>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Nazwa" name="name" error={formik.errors.name}>
+              <FormField label="Nazwa" name="name" error={formik.errors.name}>
                 <Input
-                  aria-describedby={
-                    formik.errors.name ? 'exercise-name-error' : undefined
-                  }
+                  {...getFieldA11y('name', formik.errors.name)}
                   disabled={formik.isSubmitting}
                   id="name"
                   name="name"
@@ -132,10 +155,11 @@ export function CreateExerciseForm({
                   placeholder="Np. Goblet squat"
                   value={formik.values.name}
                 />
-              </Field>
+              </FormField>
 
-              <Field label="Typ cwiczenia" name="type" error={formik.errors.type}>
+              <FormField label="Typ cwiczenia" name="type" error={formik.errors.type}>
                 <Select
+                  {...getFieldA11y('type', formik.errors.type)}
                   disabled={formik.isSubmitting}
                   id="type"
                   name="type"
@@ -149,16 +173,17 @@ export function CreateExerciseForm({
                     </option>
                   ))}
                 </Select>
-              </Field>
+              </FormField>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field
+              <FormField
                 label="Sprzet"
                 name="equipment"
                 error={formik.errors.equipment}
               >
                 <Select
+                  {...getFieldA11y('equipment', formik.errors.equipment)}
                   disabled={formik.isSubmitting}
                   id="equipment"
                   name="equipment"
@@ -172,15 +197,19 @@ export function CreateExerciseForm({
                     </option>
                   ))}
                 </Select>
-              </Field>
+              </FormField>
 
               {formik.values.equipment === 'other' ? (
-                <Field
+                <FormField
                   label="Nazwa sprzetu"
                   name="customEquipment"
                   error={formik.errors.customEquipment}
                 >
                   <Input
+                    {...getFieldA11y(
+                      'customEquipment',
+                      formik.errors.customEquipment,
+                    )}
                     disabled={formik.isSubmitting}
                     id="customEquipment"
                     name="customEquipment"
@@ -189,7 +218,7 @@ export function CreateExerciseForm({
                     placeholder="Np. sled, landmine"
                     value={formik.values.customEquipment}
                   />
-                </Field>
+                </FormField>
               ) : null}
             </div>
           </section>
@@ -205,27 +234,31 @@ export function CreateExerciseForm({
               Klasyfikacja
             </h3>
 
-            <Field
+            <FormField
               label="Glowna grupa miesniowa"
-              name="primaryMuscleGroupId"
-              error={formik.errors.primaryMuscleGroupId}
+              name="primaryMuscleGroup"
+              error={formik.errors.primaryMuscleGroup}
             >
               <Select
-                disabled={formik.isSubmitting || muscleGroups.length === 0}
-                id="primaryMuscleGroupId"
-                name="primaryMuscleGroupId"
+                {...getFieldA11y(
+                  'primaryMuscleGroup',
+                  formik.errors.primaryMuscleGroup,
+                )}
+                disabled={formik.isSubmitting}
+                id="primaryMuscleGroup"
+                name="primaryMuscleGroup"
                 onBlur={formik.handleBlur}
                 onChange={(event) => {
                   const nextPrimary = event.target.value
-                  void formik.setFieldValue('primaryMuscleGroupId', nextPrimary)
+                  void formik.setFieldValue('primaryMuscleGroup', nextPrimary)
                   void formik.setFieldValue(
-                    'secondaryMuscleGroupIds',
-                    formik.values.secondaryMuscleGroupIds.filter(
+                    'secondaryMuscleGroups',
+                    formik.values.secondaryMuscleGroups.filter(
                       (id) => id !== nextPrimary,
                     ),
                   )
                 }}
-                value={formik.values.primaryMuscleGroupId}
+                value={formik.values.primaryMuscleGroup}
               >
                 <option value="">Wybierz grupe</option>
                 {muscleGroups.map((group) => (
@@ -234,16 +267,33 @@ export function CreateExerciseForm({
                   </option>
                 ))}
               </Select>
-            </Field>
+            </FormField>
 
             <div className="grid gap-2">
-              <span className="text-sm font-semibold text-foreground">
+              <span
+                className="text-sm font-semibold text-foreground"
+                id="secondaryMuscleGroups-label"
+              >
                 Dodatkowe grupy miesniowe
               </span>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div
+                aria-describedby={
+                  typeof formik.errors.secondaryMuscleGroups === 'string'
+                    ? 'secondaryMuscleGroups-error'
+                    : undefined
+                }
+                aria-invalid={
+                  typeof formik.errors.secondaryMuscleGroups === 'string'
+                    ? true
+                    : undefined
+                }
+                aria-labelledby="secondaryMuscleGroups-label"
+                className="grid gap-2 sm:grid-cols-2"
+                role="group"
+              >
                 {muscleGroups.map((group) => {
                   const isPrimary = selectedPrimary === group.id
-                  const checked = formik.values.secondaryMuscleGroupIds.includes(
+                  const checked = formik.values.secondaryMuscleGroups.includes(
                     group.id,
                   )
 
@@ -256,19 +306,19 @@ export function CreateExerciseForm({
                         checked={checked}
                         className="h-4 w-4 accent-primary"
                         disabled={formik.isSubmitting || isPrimary}
-                        name="secondaryMuscleGroupIds"
+                        name="secondaryMuscleGroups"
                         onChange={(event) => {
                           const next = event.target.checked
                             ? [
-                                ...formik.values.secondaryMuscleGroupIds,
+                                ...formik.values.secondaryMuscleGroups,
                                 group.id,
                               ]
-                            : formik.values.secondaryMuscleGroupIds.filter(
+                            : formik.values.secondaryMuscleGroups.filter(
                                 (id) => id !== group.id,
                               )
 
                           void formik.setFieldValue(
-                            'secondaryMuscleGroupIds',
+                            'secondaryMuscleGroups',
                             next,
                           )
                         }}
@@ -286,11 +336,11 @@ export function CreateExerciseForm({
               </div>
               <FieldError
                 error={
-                  typeof formik.errors.secondaryMuscleGroupIds === 'string'
-                    ? formik.errors.secondaryMuscleGroupIds
+                  typeof formik.errors.secondaryMuscleGroups === 'string'
+                    ? formik.errors.secondaryMuscleGroups
                     : undefined
                 }
-                id="secondaryMuscleGroupIds-error"
+                id="secondaryMuscleGroups-error"
               />
             </div>
           </section>
@@ -306,13 +356,14 @@ export function CreateExerciseForm({
               Media i instrukcje
             </h3>
 
-            <Field
+            <FormField
               label="Link wideo"
               name="videoUrl"
               error={formik.errors.videoUrl}
               hint="Opcjonalny link zewnetrzny, np. YouTube lub Vimeo."
             >
               <Input
+                {...getFieldA11y('videoUrl', formik.errors.videoUrl, true)}
                 disabled={formik.isSubmitting}
                 id="videoUrl"
                 name="videoUrl"
@@ -322,15 +373,20 @@ export function CreateExerciseForm({
                 type="url"
                 value={formik.values.videoUrl}
               />
-            </Field>
+            </FormField>
 
-            <Field
+            <FormField
               label="Instrukcje"
               name="instructionText"
               error={formik.errors.instructionText}
               hint="Jedna instrukcja w wierszu. Pole moze zostac puste."
             >
               <Textarea
+                {...getFieldA11y(
+                  'instructionText',
+                  formik.errors.instructionText,
+                  true,
+                )}
                 disabled={formik.isSubmitting}
                 id="instructionText"
                 name="instructionText"
@@ -339,7 +395,7 @@ export function CreateExerciseForm({
                 placeholder={'Ustaw stopy na szerokosc bioder\nProwadz kolana za palcami'}
                 value={formik.values.instructionText}
               />
-            </Field>
+            </FormField>
           </section>
         </div>
 
@@ -362,17 +418,26 @@ export function CreateExerciseForm({
       <CardFooter>
         <div aria-live="polite" className="min-h-6">
           {submitError ? (
-            <StatusMessage tone="error">{submitError}</StatusMessage>
+            <StatusMessage size="md" tone="error">{submitError}</StatusMessage>
           ) : null}
           {submitSuccess ? (
-            <StatusMessage tone="success">{submitSuccess}</StatusMessage>
+            <StatusMessage size="md" tone="success">{submitSuccess}</StatusMessage>
           ) : null}
         </div>
 
         <Button disabled={!canSubmit} type="submit">
           <Save aria-hidden="true" className="h-4 w-4" />
-          {formik.isSubmitting ? 'Zapisywanie...' : 'Dodaj cwiczenie'}
+          {formik.isSubmitting
+            ? 'Zapisywanie...'
+            : mode === 'edit'
+              ? 'Zapisz zmiany'
+              : 'Dodaj cwiczenie'}
         </Button>
+        {onCancel ? (
+          <Button onClick={onCancel} type="button" variant="secondary">
+            Anuluj
+          </Button>
+        ) : null}
       </CardFooter>
     </CardForm>
   )
@@ -396,63 +461,3 @@ function validateExerciseForm(values: ExerciseFormValues) {
   return errors
 }
 
-function Field({
-  children,
-  error,
-  hint,
-  label,
-  name,
-}: {
-  children: React.ReactNode
-  error?: string
-  hint?: string
-  label: string
-  name: keyof ExerciseFormValues
-}) {
-  return (
-    <div className="grid gap-2">
-      <label className="text-sm font-semibold text-foreground" htmlFor={name}>
-        {label}
-      </label>
-      {children}
-      {hint ? <p className="text-xs leading-5 text-muted-foreground">{hint}</p> : null}
-      <FieldError error={error} id={`${name}-error`} />
-    </div>
-  )
-}
-
-function FieldError({ error, id }: { error?: string; id: string }) {
-  if (!error) {
-    return null
-  }
-
-  return (
-    <p className="flex items-start gap-2 text-xs font-medium leading-5 text-destructive" id={id}>
-      <AlertCircle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      <span>{error}</span>
-    </p>
-  )
-}
-
-function StatusMessage({
-  children,
-  tone,
-}: {
-  children: React.ReactNode
-  tone: 'error' | 'success'
-}) {
-  const Icon = tone === 'error' ? AlertCircle : CheckCircle2
-
-  return (
-    <p
-      className={
-        tone === 'error'
-          ? 'flex items-start gap-2 text-sm font-medium text-destructive'
-          : 'flex items-start gap-2 text-sm font-medium text-accent-foreground'
-      }
-    >
-      <Icon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-      <span>{children}</span>
-    </p>
-  )
-}

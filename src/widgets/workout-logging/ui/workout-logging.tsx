@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useBlocker } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
 import { useMutation } from 'convex/react'
@@ -51,7 +51,9 @@ import {
 import { hasConfiguredConvexUrl } from '#/shared/lib/convex-env'
 import { Button } from '#/shared/ui/button'
 import { Card, CardBody, CardHeader, CardNotice } from '#/shared/ui/card'
+import { FormField, getFieldA11y } from '#/shared/ui/form-field'
 import { Input, Textarea } from '#/shared/ui/input'
+import { StatusMessage } from '#/shared/ui/status-message'
 
 type LoggingRoutine = FunctionReturnType<
   typeof api.trainingResults.getLoggingRoutine
@@ -111,12 +113,15 @@ function ConnectedWorkoutLogging({
   const [draftState, setDraftState] = useState<TrainingDraftSaveState>('saved')
   const [lastSavedAt, setLastSavedAt] = useState<number | undefined>(undefined)
   const [isRestoringDraft, setIsRestoringDraft] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null)
 
   useEffect(() => {
     valuesRef.current = values
   }, [values])
+
+  const lastSyncedValuesRef = useRef<TrainingSubmissionFormValues | null>(null)
 
   useEffect(() => {
     if (!loggingRoutine) {
@@ -132,7 +137,9 @@ function ConnectedWorkoutLogging({
     setLastSavedAt(undefined)
     setSubmitError(null)
     setSubmitResult(null)
+    setIsSubmitting(false)
     setIsRestoringDraft(true)
+    lastSyncedValuesRef.current = null
 
     getOrCreateDraft({ assignmentId, routineId })
       .then((restoredDraft) => {
@@ -154,6 +161,7 @@ function ConnectedWorkoutLogging({
             : 'saved',
         )
         lastSyncedSnapshotRef.current = snapshot
+        lastSyncedValuesRef.current = restoredValues
       })
       .catch((error) => {
         if (isCancelled) {
@@ -167,6 +175,7 @@ function ConnectedWorkoutLogging({
             : 'Nie udalo sie przywrocic szkicu treningu.',
         )
         lastSyncedSnapshotRef.current = createTrainingDraftSnapshot(baseValues)
+        lastSyncedValuesRef.current = baseValues
       })
       .finally(() => {
         if (!isCancelled) {
@@ -192,13 +201,58 @@ function ConnectedWorkoutLogging({
     () => validateTrainingSubmissionValues(values, exerciseTypeByBlockId),
     [exerciseTypeByBlockId, values],
   )
-  const completedRows = getCompletedSetResults(values)
+  const completedRows = useMemo(() => getCompletedSetResults(values), [values])
   const totalSetCount = values.setResults.length
   const canSubmit =
     completedRows.length > 0 &&
     Object.keys(errors).length === 0 &&
     !submitResult &&
-    !isRestoringDraft
+    !isRestoringDraft &&
+    !isSubmitting
+  const submitBlockReason = getSubmitBlockReason({
+    completedSetCount: completedRows.length,
+    errors,
+    isRestoringDraft,
+    isSubmitting,
+    submitResult,
+  })
+  const hasUnsyncedDraftState = isUnsyncedDraftState(draftState)
+
+  const saveDraft = useCallback(
+    async (snapshotValues: TrainingSubmissionFormValues) => {
+      if (!draft) {
+        return null
+      }
+
+      const snapshot = createTrainingDraftSnapshot(snapshotValues)
+
+      setDraftState('saving')
+
+      const updatedDraft = await updateDraft({
+        assignmentId,
+        draftId: draft._id,
+        durationMinutes: parseDraftOptionalNumber(snapshotValues.durationMinutes),
+        notes: snapshotValues.notes,
+        routineId,
+        setResults: getChangedDraftRows(
+          snapshotValues,
+          lastSyncedValuesRef.current,
+        ).map((row) =>
+          toDraftSet(row, exerciseTypeByBlockId.get(row.routineExerciseBlockId)),
+        ),
+      })
+      const latestSnapshot = createTrainingDraftSnapshot(valuesRef.current)
+
+      setDraft(updatedDraft)
+      setLastSavedAt(updatedDraft.lastSavedAt)
+      lastSyncedSnapshotRef.current = snapshot
+      lastSyncedValuesRef.current = snapshotValues
+      setDraftState(latestSnapshot === snapshot ? 'saved' : 'unsaved')
+
+      return updatedDraft
+    },
+    [assignmentId, draft, exerciseTypeByBlockId, routineId, updateDraft],
+  )
 
   useEffect(() => {
     if (!draft || submitResult || isRestoringDraft) {
@@ -213,26 +267,7 @@ function ConnectedWorkoutLogging({
 
     setDraftState('unsaved')
     const timeoutId = window.setTimeout(() => {
-      setDraftState('saving')
-
-      updateDraft({
-        assignmentId,
-        draftId: draft._id,
-        durationMinutes: parseDraftOptionalNumber(values.durationMinutes),
-        notes: values.notes,
-        routineId,
-        setResults: values.setResults.map((row) =>
-          toDraftSet(row, exerciseTypeByBlockId.get(row.routineExerciseBlockId)),
-        ),
-      })
-        .then((updatedDraft) => {
-          const latestSnapshot = createTrainingDraftSnapshot(valuesRef.current)
-
-          setDraft(updatedDraft)
-          setLastSavedAt(updatedDraft.lastSavedAt)
-          lastSyncedSnapshotRef.current = snapshot
-          setDraftState(latestSnapshot === snapshot ? 'saved' : 'unsaved')
-        })
+      saveDraft(values)
         .catch(() => {
           setDraftState('failed')
         })
@@ -240,72 +275,26 @@ function ConnectedWorkoutLogging({
 
     return () => window.clearTimeout(timeoutId)
   }, [
-    assignmentId,
     draft,
-    exerciseTypeByBlockId,
     isRestoringDraft,
-    routineId,
+    saveDraft,
     submitResult,
-    updateDraft,
     values,
   ])
 
-  useEffect(() => {
-    function handleBeforeUnload(event: BeforeUnloadEvent) {
-      if (
-        draftState !== 'failed' &&
-        draftState !== 'saving' &&
-        draftState !== 'unsaved'
-      ) {
-        return
+  useBlocker({
+    disabled: !hasUnsyncedDraftState,
+    enableBeforeUnload: hasUnsyncedDraftState,
+    shouldBlockFn: ({ current, next }) => {
+      if (current.pathname === next.pathname) {
+        return false
       }
 
-      event.preventDefault()
-      event.returnValue = ''
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [draftState])
-
-  useEffect(() => {
-    function handleDocumentClick(event: MouseEvent) {
-      if (
-        draftState !== 'failed' &&
-        draftState !== 'saving' &&
-        draftState !== 'unsaved'
-      ) {
-        return
-      }
-
-      const link = (event.target as Element | null)?.closest('a[href]')
-
-      if (!link || !(link instanceof HTMLAnchorElement)) {
-        return
-      }
-
-      if (
-        link.origin !== window.location.origin ||
-        link.pathname === window.location.pathname
-      ) {
-        return
-      }
-
-      const shouldLeave = window.confirm(
+      return !window.confirm(
         'Szkic ma zmiany, ktore nie sa jeszcze zapisane w Convexie. Opuscic trening mimo to?',
       )
-
-      if (!shouldLeave) {
-        event.preventDefault()
-        event.stopPropagation()
-      }
-    }
-
-    document.addEventListener('click', handleDocumentClick, true)
-
-    return () => document.removeEventListener('click', handleDocumentClick, true)
-  }, [draftState])
+    },
+  })
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -324,22 +313,10 @@ function ConnectedWorkoutLogging({
     }
 
     try {
-      if (draft) {
-        setDraftState('saving')
-        const updatedDraft = await updateDraft({
-          assignmentId,
-          draftId: draft._id,
-          durationMinutes: parseDraftOptionalNumber(values.durationMinutes),
-          notes: values.notes,
-          routineId,
-          setResults: values.setResults.map((row) =>
-            toDraftSet(row, exerciseTypeByBlockId.get(row.routineExerciseBlockId)),
-          ),
-        })
+      setIsSubmitting(true)
 
-        setDraft(updatedDraft)
-        setLastSavedAt(updatedDraft.lastSavedAt)
-        lastSyncedSnapshotRef.current = createTrainingDraftSnapshot(values)
+      if (draft) {
+        await saveDraft(values)
       }
 
       const result = await submitTraining({
@@ -363,14 +340,16 @@ function ConnectedWorkoutLogging({
           ? error.message
           : 'Nie udalo sie zapisac treningu. Sprobuj ponownie.',
       )
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  function updateSetResult(
+  const updateSetResult = useCallback((
     rowIndex: number,
     field: TrainingResultField,
     value: string,
-  ) {
+  ) => {
     setValues((current) => ({
       ...current,
       setResults: current.setResults.map((row, index) => {
@@ -389,16 +368,30 @@ function ConnectedWorkoutLogging({
         }
       }),
     }))
-  }
+  }, [])
 
-  function toggleSetResult(rowIndex: number) {
+  const toggleSetResult = useCallback((rowIndex: number) => {
     setValues((current) => ({
       ...current,
       setResults: current.setResults.map((row, index) =>
         index === rowIndex ? { ...row, completed: !row.completed } : row,
       ),
     }))
-  }
+  }, [])
+
+  const handleRetryDraftSave = useCallback(async () => {
+    try {
+      setSubmitError(null)
+      await saveDraft(valuesRef.current)
+    } catch (error) {
+      setDraftState('failed')
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : 'Nie udalo sie ponownie zapisac szkicu.',
+      )
+    }
+  }, [saveDraft])
 
   if (routineQuery.isPending) {
     return <WorkoutLoggingSkeleton />
@@ -455,12 +448,13 @@ function ConnectedWorkoutLogging({
           error={submitError}
           errors={errors}
           onChangeValues={setValues}
+          onRetryDraftSave={handleRetryDraftSave}
           totalSetCount={totalSetCount}
           values={values}
         />
       </div>
 
-      <div className="sticky bottom-3 z-10 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <div className="sticky bottom-24 z-10 rounded-lg border border-border bg-card p-4 shadow-sm sm:bottom-3">
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <div className="min-w-0">
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold text-foreground">
@@ -468,13 +462,18 @@ function ConnectedWorkoutLogging({
               <span>{totalSetCount} serii w planie</span>
             </div>
             <p className="mt-1 text-xs font-medium leading-5 text-muted-foreground">
-              Szkic zapisuje sie w Convexie. Wynik bedzie widoczny dla Ciebie i coacha po zapisie.
+              {submitBlockReason ??
+                'Szkic zapisuje sie w Convexie. Wynik bedzie widoczny dla Ciebie i coacha po zapisie.'}
             </p>
           </div>
 
           <Button disabled={!canSubmit} size="lg" type="submit">
-            <Save aria-hidden="true" className="h-4 w-4" />
-            Zapisz trening
+            {isSubmitting ? (
+              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save aria-hidden="true" className="h-4 w-4" />
+            )}
+            {isSubmitting ? 'Zapisywanie...' : 'Zapisz trening'}
           </Button>
         </div>
       </div>
@@ -550,11 +549,18 @@ function ExerciseLoggingBlock({
   const rows = values.setResults
     .map((row, index) => ({ index, row }))
     .filter(({ row }) => row.routineExerciseBlockId === block._id)
+  const hasMedia = hasExerciseMedia(block)
 
   return (
     <Card>
       <CardHeader>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_12rem]">
+        <div
+          className={
+            hasMedia
+              ? 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_12rem]'
+              : 'grid gap-4'
+          }
+        >
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-muted px-2 text-xs font-bold tabular-nums text-foreground">
@@ -580,7 +586,7 @@ function ExerciseLoggingBlock({
             </p>
           </div>
 
-          <ExerciseMedia block={block} />
+          {hasMedia ? <ExerciseMedia block={block} /> : null}
         </div>
       </CardHeader>
 
@@ -647,13 +653,6 @@ function SetResultRow({
   rowIndex: number
   target?: SetTarget
 }) {
-  const rowError =
-    errors[`setResults.${rowIndex}.weightKg`] ??
-    errors[`setResults.${rowIndex}.reps`] ??
-    errors[`setResults.${rowIndex}.durationSeconds`] ??
-    errors[`setResults.${rowIndex}.distanceMeters`] ??
-    errors[`setResults.${rowIndex}.rpe`]
-
   return (
     <div
       className={
@@ -687,14 +686,13 @@ function SetResultRow({
               field={field}
               key={field}
               onChange={(value) => onUpdate(field, value)}
+              rowIndex={rowIndex}
               type={block.exercise.type}
               value={row[field] ?? ''}
             />
           ))}
         </div>
       </div>
-
-      {row.completed && rowError ? <StatusMessage tone="error">{rowError}</StatusMessage> : null}
     </div>
   )
 }
@@ -703,36 +701,50 @@ function FieldInput({
   error,
   field,
   onChange,
+  rowIndex,
   type,
   value,
 }: {
   error?: string
   field: TrainingResultField
   onChange: (value: string) => void
+  rowIndex: number
   type: ExerciseType
   value: string
 }) {
   const label = getTrainingResultFieldLabel(field, type)
   const unit = getTrainingResultFieldUnit(field)
+  const inputId = `set-${rowIndex}-${field}`
+  const errorId = `${inputId}-error`
 
   return (
-    <label className="grid gap-1.5">
-      <span className="flex items-center justify-between gap-2 text-xs font-bold text-muted-foreground">
+    <div className="grid gap-1.5">
+      <label
+        className="flex items-center justify-between gap-2 text-xs font-bold text-muted-foreground"
+        htmlFor={inputId}
+      >
         <span>{label}</span>
         <span>{unit}</span>
-      </span>
+      </label>
       <Input
+        aria-describedby={error ? errorId : undefined}
         aria-invalid={Boolean(error)}
+        id={inputId}
         inputMode="decimal"
         min={field === 'rpe' ? 1 : 0}
         max={field === 'rpe' ? 10 : undefined}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={field === 'rpe' ? 'Opcj.' : '0'}
+        placeholder={getTrainingResultFieldPlaceholder(field)}
         step={field === 'reps' ? 1 : 'any'}
         type="number"
         value={value}
       />
-    </label>
+      {error ? (
+        <p className="text-xs font-medium leading-5 text-destructive" id={errorId}>
+          {error}
+        </p>
+      ) : null}
+    </div>
   )
 }
 
@@ -777,6 +789,7 @@ function TrainingReviewPanel({
   error,
   errors,
   onChangeValues,
+  onRetryDraftSave,
   totalSetCount,
   values,
 }: {
@@ -785,10 +798,11 @@ function TrainingReviewPanel({
   error: string | null
   errors: Record<string, string>
   onChangeValues: React.Dispatch<React.SetStateAction<TrainingSubmissionFormValues>>
+  onRetryDraftSave: () => void
   totalSetCount: number
   values: TrainingSubmissionFormValues
 }) {
-  const formError = error ?? errors.form ?? errors.durationMinutes
+  const formError = error ?? errors.form
 
   return (
     <aside className="grid gap-4 xl:sticky xl:top-40">
@@ -799,12 +813,17 @@ function TrainingReviewPanel({
             Podsumowanie
           </div>
           <p className="text-sm leading-6 text-muted-foreground">
-            Sprawdz zapis przed wyslaniem. Nie implementujemy edycji wyniku w MVP.
+            Sprawdz zapis przed wyslaniem. Wynik trafi do historii i widoku coacha.
           </p>
         </CardHeader>
         <CardBody>
           <div className="grid gap-4">
-            <Field label="Czas treningu" name="duration-minutes">
+            <FormField
+              error={errors.durationMinutes}
+              hint="Minuty"
+              label="Czas treningu"
+              name="duration-minutes"
+            >
               <Input
                 id="duration-minutes"
                 inputMode="decimal"
@@ -818,11 +837,13 @@ function TrainingReviewPanel({
                 placeholder="Np. 55"
                 type="number"
                 value={values.durationMinutes}
+                {...getFieldA11y('duration-minutes', errors.durationMinutes, {
+                  hasHint: true,
+                })}
               />
-              <p className="text-xs font-medium text-muted-foreground">Minuty</p>
-            </Field>
+            </FormField>
 
-            <Field label="Notatka po treningu" name="training-notes">
+            <FormField label="Notatka po treningu" name="training-notes">
               <Textarea
                 id="training-notes"
                 onChange={(event) =>
@@ -831,10 +852,10 @@ function TrainingReviewPanel({
                     notes: event.target.value,
                   }))
                 }
-                placeholder="Opcjonalnie: energia, bol, trudnosc, cos dla coacha."
+                placeholder="Opcjonalnie: energia, bol, trudnosc, komentarz dla coacha."
                 value={values.notes}
               />
-            </Field>
+            </FormField>
 
             <dl className="grid grid-cols-2 gap-3">
               <SummaryFact label="Zapisane" value={`${completedRows.length}`} />
@@ -848,9 +869,15 @@ function TrainingReviewPanel({
             ) : null}
 
             {draftState === 'failed' ? (
-              <StatusMessage tone="error">
-                Ostatni autosave nie przeszedl. Przed zamknieciem strony sprobuj ponownie zapisac lub wyslac trening.
-              </StatusMessage>
+              <div className="grid gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                <StatusMessage tone="error">
+                  Ostatni autosave nie przeszedl. Przed zamknieciem strony sprobuj ponownie zapisac szkic.
+                </StatusMessage>
+                <Button onClick={onRetryDraftSave} size="sm" type="button" variant="secondary">
+                  <Cloud aria-hidden="true" className="h-4 w-4" />
+                  Zapisz szkic ponownie
+                </Button>
+              </div>
             ) : null}
 
             {formError ? <StatusMessage tone="error">{formError}</StatusMessage> : null}
@@ -871,14 +898,6 @@ function SummaryFact({ label, value }: { label: string; value: string }) {
 }
 
 function ExerciseMedia({ block }: { block: RoutineBlock }) {
-  if (!block.exercise.photoUrl && !block.exercise.videoUrl) {
-    return (
-      <div className="flex min-h-28 items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 px-4 text-center text-xs font-semibold leading-5 text-muted-foreground">
-        Media opcjonalne
-      </div>
-    )
-  }
-
   return (
     <div className="grid content-start gap-3">
       {block.exercise.photoUrl ? (
@@ -904,23 +923,23 @@ function ExerciseMedia({ block }: { block: RoutineBlock }) {
   )
 }
 
-function Field({
-  children,
-  label,
-  name,
-}: {
-  children: React.ReactNode
-  label: string
-  name: string
-}) {
-  return (
-    <div className="grid gap-2">
-      <label className="text-sm font-semibold text-foreground" htmlFor={name}>
-        {label}
-      </label>
-      {children}
-    </div>
-  )
+function hasExerciseMedia(block: RoutineBlock) {
+  return Boolean(block.exercise.photoUrl || block.exercise.videoUrl)
+}
+
+function getTrainingResultFieldPlaceholder(field: TrainingResultField) {
+  switch (field) {
+    case 'distanceMeters':
+      return 'Np. 800'
+    case 'durationSeconds':
+      return 'Np. 45'
+    case 'reps':
+      return 'Np. 10'
+    case 'rpe':
+      return '1-10'
+    case 'weightKg':
+      return 'Np. 20'
+  }
 }
 
 function SuccessState({
@@ -1057,7 +1076,11 @@ function StateFrame({
 
 function WorkoutLoggingSkeleton() {
   return (
-    <section className="grid gap-5">
+    <section
+      aria-busy="true"
+      aria-label="Ladowanie treningu"
+      className="grid animate-pulse gap-5"
+    >
       <header className="border-b border-border pb-5">
         <div className="h-4 w-32 rounded-md bg-muted" />
         <div className="mt-3 h-9 max-w-xl rounded-md bg-muted" />
@@ -1086,29 +1109,89 @@ function WorkoutLoggingSkeleton() {
   )
 }
 
-function StatusMessage({
-  children,
-  tone,
-}: {
-  children: React.ReactNode
-  tone: 'error' | 'success' | 'warning'
-}) {
-  const Icon = tone === 'error' || tone === 'warning' ? AlertCircle : CheckCircle2
+function isUnsyncedDraftState(state: TrainingDraftSaveState) {
+  return state === 'failed' || state === 'saving' || state === 'unsaved'
+}
 
-  return (
-    <p
-      className={
-        tone === 'error'
-          ? 'flex items-start gap-2 text-xs font-medium leading-5 text-destructive'
-          : tone === 'warning'
-            ? 'flex items-start gap-2 text-xs font-medium leading-5 text-foreground'
-          : 'flex items-start gap-2 text-xs font-medium leading-5 text-accent-foreground'
-      }
-    >
-      <Icon aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      <span>{children}</span>
-    </p>
+function getSubmitBlockReason({
+  completedSetCount,
+  errors,
+  isRestoringDraft,
+  isSubmitting,
+  submitResult,
+}: {
+  completedSetCount: number
+  errors: Record<string, string>
+  isRestoringDraft: boolean
+  isSubmitting: boolean
+  submitResult: SubmitResult | null
+}) {
+  if (submitResult) {
+    return 'Ten trening zostal juz zapisany.'
+  }
+
+  if (isSubmitting) {
+    return 'Zapisujemy trening. Nie klikaj ponownie.'
+  }
+
+  if (isRestoringDraft) {
+    return 'Przywracamy zapisany szkic treningu.'
+  }
+
+  if (completedSetCount === 0) {
+    return 'Oznacz i uzupelnij przynajmniej jedna serie, zeby zapisac trening.'
+  }
+
+  const firstError = Object.values(errors)[0]
+
+  if (firstError) {
+    return firstError
+  }
+
+  return null
+}
+
+function getChangedDraftRows(
+  values: TrainingSubmissionFormValues,
+  syncedValues: TrainingSubmissionFormValues | null,
+) {
+  if (!syncedValues) {
+    return values.setResults
+  }
+
+  const syncedRowsByKey = new Map(
+    syncedValues.setResults.map((row) => [
+      getTrainingSetResultKey(row),
+      getTrainingSetResultSnapshot(row),
+    ]),
   )
+
+  return values.setResults.filter((row) => {
+    const syncedRow = syncedRowsByKey.get(getTrainingSetResultKey(row))
+
+    return syncedRow !== getTrainingSetResultSnapshot(row)
+  })
+}
+
+function getTrainingSetResultKey(row: {
+  routineExerciseBlockId: string
+  setIndex: number
+}) {
+  return `${row.routineExerciseBlockId}:${row.setIndex}`
+}
+
+function getTrainingSetResultSnapshot(row: TrainingSetResultFormValues) {
+  return JSON.stringify({
+    completed: row.completed,
+    distanceMeters: row.distanceMeters,
+    durationSeconds: row.durationSeconds,
+    exerciseId: row.exerciseId,
+    reps: row.reps,
+    routineExerciseBlockId: row.routineExerciseBlockId,
+    rpe: row.rpe,
+    setIndex: row.setIndex,
+    weightKg: row.weightKg,
+  })
 }
 
 function toSubmittedSet(

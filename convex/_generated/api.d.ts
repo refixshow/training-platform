@@ -9,11 +9,12 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as bodyMeasurements from "../bodyMeasurements.js";
 import type * as clientInvites from "../clientInvites.js";
 import type * as coachClients from "../coachClients.js";
+import type * as dev from "../dev.js";
 import type * as exercises from "../exercises.js";
 import type * as http from "../http.js";
-import type * as muscleGroups from "../muscleGroups.js";
 import type * as programAssignments from "../programAssignments.js";
 import type * as programs from "../programs.js";
 import type * as routines from "../routines.js";
@@ -29,11 +30,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  bodyMeasurements: typeof bodyMeasurements;
   clientInvites: typeof clientInvites;
   coachClients: typeof coachClients;
+  dev: typeof dev;
   exercises: typeof exercises;
   http: typeof http;
-  muscleGroups: typeof muscleGroups;
   programAssignments: typeof programAssignments;
   programs: typeof programs;
   routines: typeof routines;

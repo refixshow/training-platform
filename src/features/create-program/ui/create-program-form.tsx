@@ -89,6 +89,16 @@ export function CreateProgramForm({
     (total, routine) => total + routine.setCount,
     0,
   )
+  const titleError = formik.touched.title ? formik.errors.title : undefined
+  const durationError = formik.touched.durationWeeks
+    ? formik.errors.durationWeeks
+    : undefined
+  const descriptionError = formik.touched.description
+    ? formik.errors.description
+    : undefined
+  const routineError = formik.touched.routineIds
+    ? formik.errors.routineIds?.toString()
+    : undefined
   const validationSummary =
     formik.errors.title ??
     formik.errors.durationWeeks ??
@@ -121,7 +131,7 @@ export function CreateProgramForm({
   }
 
   return (
-    <form className="grid gap-5" noValidate onSubmit={formik.handleSubmit}>
+    <form className="grid gap-5 pb-28 sm:pb-24" noValidate onSubmit={formik.handleSubmit}>
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -149,13 +159,17 @@ export function CreateProgramForm({
           <div className="grid gap-5">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_12rem]">
               <Field
-                error={formik.touched.title ? formik.errors.title : undefined}
+                error={titleError}
+                errorId="program-title-error"
                 label="Nazwa programu"
                 name="program-title"
               >
                 <Input
+                  aria-describedby={titleError ? 'program-title-error' : undefined}
+                  aria-invalid={Boolean(titleError)}
                   disabled={formik.isSubmitting}
                   id="program-title"
+                  maxLength={120}
                   name="title"
                   onBlur={formik.handleBlur}
                   onChange={formik.handleChange}
@@ -165,15 +179,16 @@ export function CreateProgramForm({
               </Field>
 
               <Field
-                error={
-                  formik.touched.durationWeeks
-                    ? formik.errors.durationWeeks
-                    : undefined
-                }
+                error={durationError}
+                errorId="program-duration-error"
                 label="Czas (tyg.)"
                 name="program-duration"
               >
                 <Input
+                  aria-describedby={
+                    durationError ? 'program-duration-error' : undefined
+                  }
+                  aria-invalid={Boolean(durationError)}
                   disabled={formik.isSubmitting}
                   id="program-duration"
                   min={1}
@@ -188,17 +203,19 @@ export function CreateProgramForm({
             </div>
 
             <Field
-              error={
-                formik.touched.description
-                  ? formik.errors.description
-                  : undefined
-              }
+              error={descriptionError}
+              errorId="program-description-error"
               label="Opis dla trenera"
               name="program-description"
             >
               <Textarea
+                aria-describedby={
+                  descriptionError ? 'program-description-error' : undefined
+                }
+                aria-invalid={Boolean(descriptionError)}
                 disabled={formik.isSubmitting}
                 id="program-description"
+                maxLength={2000}
                 name="description"
                 onBlur={formik.handleBlur}
                 onChange={formik.handleChange}
@@ -213,7 +230,10 @@ export function CreateProgramForm({
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <div
+              className="flex items-center gap-2 text-sm font-semibold text-foreground"
+              id="program-routines-label"
+            >
               <Plus aria-hidden="true" className="h-4 w-4 text-primary" />
               Wybierz rutyny
             </div>
@@ -223,7 +243,13 @@ export function CreateProgramForm({
             </p>
           </CardHeader>
 
-          <div className="grid gap-0">
+          <div
+            aria-describedby={routineError ? 'program-routines-error' : undefined}
+            aria-invalid={Boolean(routineError)}
+            aria-labelledby="program-routines-label"
+            className="grid gap-0"
+            role="group"
+          >
             {routines.map((routine) => {
               const checked = formik.values.routineIds.includes(routine._id)
 
@@ -237,6 +263,10 @@ export function CreateProgramForm({
                   key={routine._id}
                 >
                   <input
+                    aria-describedby={
+                      routineError ? 'program-routines-error' : undefined
+                    }
+                    aria-invalid={Boolean(routineError)}
                     checked={checked}
                     className="mt-1 h-4 w-4 rounded border-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     disabled={formik.isSubmitting}
@@ -244,7 +274,7 @@ export function CreateProgramForm({
                     type="checkbox"
                   />
                   <span className="min-w-0">
-                    <span className="block text-sm font-bold text-foreground">
+                    <span className="block break-words text-sm font-bold text-foreground">
                       {routine.name}
                     </span>
                     <span className="mt-2 grid gap-2 text-xs font-semibold text-muted-foreground sm:grid-cols-3">
@@ -274,8 +304,8 @@ export function CreateProgramForm({
           </CardHeader>
 
           {selectedRoutines.length === 0 ? (
-            <CardNotice tone="neutral">
-              Wybierz minimum jedna rutyne, zeby zapisac program.
+            <CardNotice id="program-routines-error" tone="neutral">
+              {routineError ?? 'Wybierz minimum jedna rutyne, zeby zapisac program.'}
             </CardNotice>
           ) : (
             <div className="grid gap-0">
@@ -289,7 +319,7 @@ export function CreateProgramForm({
                       <p className="text-xs font-bold text-primary">
                         #{index + 1}
                       </p>
-                      <h3 className="mt-1 text-sm font-bold text-foreground">
+                      <h3 className="mt-1 break-words text-sm font-bold text-foreground">
                         {routine.name}
                       </h3>
                     </div>
@@ -378,11 +408,13 @@ export function CreateProgramForm({
 function Field({
   children,
   error,
+  errorId,
   label,
   name,
 }: {
   children: React.ReactNode
   error?: string
+  errorId: string
   label: string
   name: string
 }) {
@@ -392,7 +424,11 @@ function Field({
         {label}
       </label>
       {children}
-      {error ? <StatusMessage tone="error">{error}</StatusMessage> : null}
+      {error ? (
+        <StatusMessage id={errorId} tone="error">
+          {error}
+        </StatusMessage>
+      ) : null}
     </div>
   )
 }
@@ -428,9 +464,11 @@ function validateProgramForm(
 
 function StatusMessage({
   children,
+  id,
   tone,
 }: {
   children: React.ReactNode
+  id?: string
   tone: 'error' | 'success'
 }) {
   const Icon = tone === 'error' ? AlertCircle : CheckCircle2
@@ -442,6 +480,7 @@ function StatusMessage({
           ? 'flex items-start gap-2 text-xs font-medium leading-5 text-destructive'
           : 'flex items-start gap-2 text-xs font-medium leading-5 text-accent-foreground'
       }
+      id={id}
     >
       <Icon aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <span>{children}</span>

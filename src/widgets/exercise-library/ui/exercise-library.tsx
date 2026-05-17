@@ -1,48 +1,60 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
+import { useMutation } from 'convex/react'
 import {
   AlertCircle,
   Dumbbell,
   Filter,
+  Pencil,
   Plus,
   Search,
   SlidersHorizontal,
+  Trash2,
 } from 'lucide-react'
 import type { Doc, Id } from '../../../../convex/_generated/dataModel'
 import { api } from '../../../../convex/_generated/api'
 
 import {
+  emptyExerciseFormValues,
   exerciseEquipmentOptions,
   exerciseTypeOptions,
   getExerciseEquipmentLabel,
   getExerciseTypeIcon,
   getExerciseTypeLabel,
   type ExerciseEquipment,
+  type ExerciseFormValues,
   type ExerciseType,
 } from '#/entities/exercise'
+import {
+  getMuscleGroupLabel,
+  muscleGroupOptions,
+  type MuscleGroup,
+} from '#/entities/muscle-group'
 import { CreateExerciseForm } from '#/features/create-exercise'
 import { Button } from '#/shared/ui/button'
-import { Card, CardBody, CardHeader } from '#/shared/ui/card'
+import { Card, CardHeader } from '#/shared/ui/card'
 import { Input, Select } from '#/shared/ui/input'
+import { Notice } from '#/shared/ui/notice'
+import { StateCard } from '#/shared/ui/state-card'
 
-type ExerciseWithMuscles = Doc<'exercises'> & {
-  primaryMuscleGroup: Doc<'muscleGroups'> | null
-  secondaryMuscleGroups: Doc<'muscleGroups'>[]
-}
+type Exercise = Doc<'exercises'>
 
-type MuscleGroupDoc = Doc<'muscleGroups'>
+type EditorMode =
+  | { kind: 'create' }
+  | { exercise: Exercise; kind: 'edit' }
+  | { kind: 'idle' }
 
 interface ExerciseFilters {
   equipment: 'all' | ExerciseEquipment
-  muscleGroupId: 'all' | Id<'muscleGroups'>
+  muscleGroup: 'all' | MuscleGroup
   search: string
   type: 'all' | ExerciseType
 }
 
 const defaultFilters: ExerciseFilters = {
   equipment: 'all',
-  muscleGroupId: 'all',
+  muscleGroup: 'all',
   search: '',
   type: 'all',
 }
@@ -56,47 +68,41 @@ export function ExerciseLibrary() {
 }
 
 function ConnectedExerciseLibrary() {
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [mode, setMode] = useState<EditorMode>({ kind: 'idle' })
   const [filters, setFilters] = useState<ExerciseFilters>(defaultFilters)
-  const exercisesQuery = useQuery(convexQuery(api.exercises.list, { limit: 100 }))
-  const muscleGroupsQuery = useQuery(
-    convexQuery(api.muscleGroups.list, { limit: 100 }),
+  const [notice, setNotice] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const authQuery = useQuery(convexQuery(api.auth.currentCoachAdmin, {}))
+  const canManageExercises = Boolean(authQuery.data)
+  const removeExercise = useMutation(api.exercises.remove)
+  const exerciseListArgs = useMemo(
+    () =>
+      canManageExercises
+        ? {
+            equipment:
+              filters.equipment === 'all' ? undefined : filters.equipment,
+            limit: 100,
+            muscleGroup:
+              filters.muscleGroup === 'all' ? undefined : filters.muscleGroup,
+            search: filters.search.trim() || undefined,
+            type: filters.type === 'all' ? undefined : filters.type,
+          }
+        : 'skip',
+    [canManageExercises, filters],
+  )
+  const exercisesQuery = useQuery(
+    convexQuery(api.exercises.list, exerciseListArgs),
   )
 
-  const isLoading = exercisesQuery.isPending || muscleGroupsQuery.isPending
-  const queryError = exercisesQuery.error ?? muscleGroupsQuery.error
-  const exerciseItems = (exercisesQuery.data ?? []) as ExerciseWithMuscles[]
-  const muscleGroupItems = (muscleGroupsQuery.data ?? []) as MuscleGroupDoc[]
-
-  const filteredExercises = useMemo(() => {
-    const search = filters.search.trim().toLowerCase()
-
-    return exerciseItems.filter((exercise) => {
-      const matchesSearch =
-        !search ||
-        exercise.name.toLowerCase().includes(search) ||
-        exercise.primaryMuscleGroup?.name.toLowerCase().includes(search)
-
-      const matchesType =
-        filters.type === 'all' || exercise.type === filters.type
-      const matchesEquipment =
-        filters.equipment === 'all' || exercise.equipment === filters.equipment
-      const matchesMuscleGroup =
-        filters.muscleGroupId === 'all' ||
-        exercise.primaryMuscleGroupId === filters.muscleGroupId ||
-        exercise.secondaryMuscleGroupIds.includes(filters.muscleGroupId)
-
-      return (
-        matchesSearch && matchesType && matchesEquipment && matchesMuscleGroup
-      )
-    })
-  }, [exerciseItems, filters])
+  const isLoading = authQuery.isPending || exercisesQuery.isPending
+  const queryError = authQuery.error ?? exercisesQuery.error
+  const exerciseItems = (exercisesQuery.data ?? []) as Exercise[]
 
   const hasActiveFilters =
     filters.search ||
     filters.type !== 'all' ||
     filters.equipment !== 'all' ||
-    filters.muscleGroupId !== 'all'
+    filters.muscleGroup !== 'all'
 
   return (
     <section className="flex min-h-[calc(100vh-9rem)] flex-col gap-6">
@@ -113,55 +119,107 @@ function ConnectedExerciseLibrary() {
           </p>
         </div>
 
-        <Button onClick={() => setIsCreateOpen((value) => !value)}>
+        <Button
+          disabled={!canManageExercises}
+          onClick={() => {
+            setMode((current) =>
+              current.kind === 'create' ? { kind: 'idle' } : { kind: 'create' },
+            )
+            setNotice(null)
+            setDeleteError(null)
+          }}
+        >
           <Plus aria-hidden="true" className="h-4 w-4" />
-          {isCreateOpen ? 'Zamknij formularz' : 'Dodaj cwiczenie'}
+          {mode.kind === 'create' ? 'Zamknij formularz' : 'Dodaj cwiczenie'}
         </Button>
       </header>
 
-      {isCreateOpen ? (
-        <CreateExerciseForm
-          muscleGroups={muscleGroupItems.map((group) => ({
-            id: group._id,
-            name: group.name,
-          }))}
-        />
-      ) : null}
+      {isLoading ? (
+        <ExerciseSkeletonCard />
+      ) : queryError ? (
+        <ExerciseQueryError error={queryError} />
+      ) : !canManageExercises ? (
+        <CoachAuthRequiredState />
+      ) : (
+        <>
+          {notice || deleteError ? (
+            <Notice tone={deleteError ? 'error' : 'success'}>
+              {deleteError ?? notice}
+            </Notice>
+          ) : null}
 
-      <Card>
-        <ExerciseToolbar
-          filters={filters}
-          muscleGroups={muscleGroupItems}
-          onChange={setFilters}
-          onReset={() => setFilters(defaultFilters)}
-          showReset={Boolean(hasActiveFilters)}
-        />
+          {mode.kind !== 'idle' ? (
+            <CreateExerciseForm
+              exerciseId={mode.kind === 'edit' ? mode.exercise._id : undefined}
+              initialValues={
+                mode.kind === 'edit'
+                  ? toExerciseFormValues(mode.exercise)
+                  : emptyExerciseFormValues
+              }
+              mode={mode.kind}
+              onCancel={() => setMode({ kind: 'idle' })}
+              onSaved={() => {
+                setNotice(
+                  mode.kind === 'edit'
+                    ? 'Cwiczenie zostalo zaktualizowane.'
+                    : 'Cwiczenie zostalo dodane do biblioteki.',
+                )
+                setDeleteError(null)
+                setMode({ kind: 'idle' })
+              }}
+            />
+          ) : null}
 
-        {isLoading ? (
-          <ExerciseSkeleton />
-        ) : queryError ? (
-          <ExerciseQueryError error={queryError} />
-        ) : exerciseItems.length === 0 ? (
-          <ExerciseEmptyState onCreate={() => setIsCreateOpen(true)} />
-        ) : filteredExercises.length === 0 ? (
-          <ExerciseNoResults onReset={() => setFilters(defaultFilters)} />
-        ) : (
-          <ExerciseList exercises={filteredExercises} />
-        )}
-      </Card>
+          <Card>
+            <ExerciseToolbar
+              filters={filters}
+              onChange={(nextFilters) => {
+                setFilters(nextFilters)
+                setNotice(null)
+                setDeleteError(null)
+              }}
+              onReset={() => setFilters(defaultFilters)}
+              showReset={Boolean(hasActiveFilters)}
+            />
+
+            {exerciseItems.length === 0 && !hasActiveFilters ? (
+              <ExerciseEmptyState onCreate={() => setMode({ kind: 'create' })} />
+            ) : exerciseItems.length === 0 ? (
+              <ExerciseNoResults onReset={() => setFilters(defaultFilters)} />
+            ) : (
+              <ExerciseList
+                exercises={exerciseItems}
+                onDelete={(exercise) =>
+                  void handleDeleteExercise(exercise, removeExercise, {
+                    onError: setDeleteError,
+                    onSuccess: () => {
+                      setDeleteError(null)
+                      setNotice('Cwiczenie zostalo usuniete.')
+                      setMode({ kind: 'idle' })
+                    },
+                  })
+                }
+                onEdit={(exercise) => {
+                  setMode({ exercise, kind: 'edit' })
+                  setNotice(null)
+                  setDeleteError(null)
+                }}
+              />
+            )}
+          </Card>
+        </>
+      )}
     </section>
   )
 }
 
 function ExerciseToolbar({
   filters,
-  muscleGroups,
   onChange,
   onReset,
   showReset,
 }: {
   filters: ExerciseFilters
-  muscleGroups: MuscleGroupDoc[]
   onChange: (filters: ExerciseFilters) => void
   onReset: () => void
   showReset: boolean
@@ -224,14 +282,14 @@ function ExerciseToolbar({
           onChange={(value) =>
             onChange({
               ...filters,
-              muscleGroupId: value as ExerciseFilters['muscleGroupId'],
+              muscleGroup: value as ExerciseFilters['muscleGroup'],
             })
           }
-          value={filters.muscleGroupId}
+          value={filters.muscleGroup}
         >
           <option value="all">Wszystkie grupy</option>
-          {muscleGroups.map((group) => (
-            <option key={group._id} value={group._id}>
+          {muscleGroupOptions.map((group) => (
+            <option key={group.id} value={group.id}>
               {group.name}
             </option>
           ))}
@@ -273,7 +331,15 @@ function FilterSelect({
   )
 }
 
-function ExerciseList({ exercises }: { exercises: ExerciseWithMuscles[] }) {
+function ExerciseList({
+  exercises,
+  onDelete,
+  onEdit,
+}: {
+  exercises: Exercise[]
+  onDelete: (exercise: Exercise) => void
+  onEdit: (exercise: Exercise) => void
+}) {
   return (
     <div>
       <div className="hidden md:block">
@@ -285,11 +351,17 @@ function ExerciseList({ exercises }: { exercises: ExerciseWithMuscles[] }) {
               <th className="px-5 py-3">Sprzet</th>
               <th className="px-5 py-3">Grupy miesniowe</th>
               <th className="px-5 py-3">Instrukcje</th>
+              <th className="px-5 py-3 text-right">Akcje</th>
             </tr>
           </thead>
           <tbody>
             {exercises.map((exercise) => (
-              <ExerciseTableRow exercise={exercise} key={exercise._id} />
+              <ExerciseTableRow
+                exercise={exercise}
+                key={exercise._id}
+                onDelete={() => onDelete(exercise)}
+                onEdit={() => onEdit(exercise)}
+              />
             ))}
           </tbody>
         </table>
@@ -297,14 +369,27 @@ function ExerciseList({ exercises }: { exercises: ExerciseWithMuscles[] }) {
 
       <div className="grid gap-0 md:hidden">
         {exercises.map((exercise) => (
-          <ExerciseMobileRow exercise={exercise} key={exercise._id} />
+          <ExerciseMobileRow
+            exercise={exercise}
+            key={exercise._id}
+            onDelete={() => onDelete(exercise)}
+            onEdit={() => onEdit(exercise)}
+          />
         ))}
       </div>
     </div>
   )
 }
 
-function ExerciseTableRow({ exercise }: { exercise: ExerciseWithMuscles }) {
+function ExerciseTableRow({
+  exercise,
+  onDelete,
+  onEdit,
+}: {
+  exercise: Exercise
+  onDelete: () => void
+  onEdit: () => void
+}) {
   const Icon = getExerciseTypeIcon(exercise.type)
 
   return (
@@ -324,6 +409,10 @@ function ExerciseTableRow({ exercise }: { exercise: ExerciseWithMuscles }) {
                 target="_blank"
               >
                 Link wideo
+                <span className="sr-only">
+                  {' '}
+                  dla {exercise.name}, otwiera nowe okno
+                </span>
               </a>
             ) : (
               <p className="mt-1 text-xs text-muted-foreground">Bez wideo</p>
@@ -347,11 +436,31 @@ function ExerciseTableRow({ exercise }: { exercise: ExerciseWithMuscles }) {
           ? `${exercise.instructions.length} krokow`
           : 'Brak'}
       </td>
+      <td className="px-5 py-4 align-top">
+        <div className="flex justify-end gap-2">
+          <Button onClick={onEdit} size="sm" variant="secondary">
+            <Pencil aria-hidden="true" className="h-4 w-4" />
+            Edytuj
+          </Button>
+          <Button onClick={onDelete} size="sm" variant="ghost">
+            <Trash2 aria-hidden="true" className="h-4 w-4" />
+            Usun
+          </Button>
+        </div>
+      </td>
     </tr>
   )
 }
 
-function ExerciseMobileRow({ exercise }: { exercise: ExerciseWithMuscles }) {
+function ExerciseMobileRow({
+  exercise,
+  onDelete,
+  onEdit,
+}: {
+  exercise: Exercise
+  onDelete: () => void
+  onEdit: () => void
+}) {
   const Icon = getExerciseTypeIcon(exercise.type)
 
   return (
@@ -390,25 +499,43 @@ function ExerciseMobileRow({ exercise }: { exercise: ExerciseWithMuscles }) {
         </div>
       </dl>
       <MuscleGroupSummary exercise={exercise} />
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={onEdit} size="sm" variant="secondary">
+          <Pencil aria-hidden="true" className="h-4 w-4" />
+          Edytuj
+        </Button>
+        <Button onClick={onDelete} size="sm" variant="ghost">
+          <Trash2 aria-hidden="true" className="h-4 w-4" />
+          Usun
+        </Button>
+      </div>
     </article>
   )
 }
 
-function MuscleGroupSummary({ exercise }: { exercise: ExerciseWithMuscles }) {
+function MuscleGroupSummary({ exercise }: { exercise: Exercise }) {
   return (
     <div className="flex flex-wrap gap-2">
       <span className="rounded-md bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">
-        {exercise.primaryMuscleGroup?.name ?? 'Brak grupy'}
+        {getMuscleGroupLabel(exercise.primaryMuscleGroup)}
       </span>
       {exercise.secondaryMuscleGroups.map((group) => (
         <span
           className="rounded-md border border-border px-2 py-1 text-xs font-semibold text-muted-foreground"
-          key={group._id}
+          key={group}
         >
-          {group.name}
+          {getMuscleGroupLabel(group)}
         </span>
       ))}
     </div>
+  )
+}
+
+function ExerciseSkeletonCard() {
+  return (
+    <Card>
+      <ExerciseSkeleton />
+    </Card>
   )
 }
 
@@ -502,6 +629,18 @@ function ExerciseQueryError({ error }: { error: Error }) {
   )
 }
 
+function CoachAuthRequiredState() {
+  return (
+    <StateCard
+      icon={<AlertCircle aria-hidden="true" />}
+      title="Ten widok jest tylko dla coacha"
+    >
+      Biblioteka cwiczen jest narzedziem programowania. Zaloguj sie na konto
+      coach/admin, zeby zarzadzac cwiczeniami.
+    </StateCard>
+  )
+}
+
 function ExerciseLibrarySetupState() {
   return (
     <section className="flex min-h-[calc(100vh-9rem)] flex-col gap-6">
@@ -512,24 +651,54 @@ function ExerciseLibrarySetupState() {
         </h1>
       </header>
 
-      <Card>
-        <CardBody padding="lg">
-        <div className="flex max-w-2xl items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
-            <AlertCircle aria-hidden="true" className="h-5 w-5" />
-          </span>
-          <div>
-            <h2 className="text-lg font-bold text-foreground">
-              Convex nie jest jeszcze podlaczony
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Ustaw `VITE_CONVEX_URL`, zeby wlaczyc liste cwiczen i formularz
-              tworzenia. Ten ekran pozostaje stabilny bez providera Convex.
-            </p>
-          </div>
-        </div>
-        </CardBody>
-      </Card>
+      <StateCard
+        icon={<AlertCircle aria-hidden="true" />}
+        title="Convex nie jest jeszcze podlaczony"
+      >
+        Ustaw `VITE_CONVEX_URL`, zeby wlaczyc liste cwiczen i formularz
+        tworzenia. Ten ekran pozostaje stabilny bez providera Convex.
+      </StateCard>
     </section>
   )
+}
+
+function toExerciseFormValues(exercise: Exercise): ExerciseFormValues {
+  return {
+    customEquipment: exercise.customEquipment ?? '',
+    equipment: exercise.equipment,
+    instructionText: exercise.instructions.join('\n'),
+    name: exercise.name,
+    primaryMuscleGroup: exercise.primaryMuscleGroup,
+    secondaryMuscleGroups: exercise.secondaryMuscleGroups,
+    type: exercise.type,
+    videoUrl: exercise.videoUrl ?? '',
+  }
+}
+
+async function handleDeleteExercise(
+  exercise: Exercise,
+  removeExercise: (args: { exerciseId: Id<'exercises'> }) => Promise<Id<'exercises'>>,
+  callbacks: {
+    onError: (message: string) => void
+    onSuccess: () => void
+  },
+) {
+  const confirmed = window.confirm(
+    `Usunac cwiczenie "${exercise.name}" z biblioteki? Tej akcji nie da sie cofnac.`,
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await removeExercise({ exerciseId: exercise._id })
+    callbacks.onSuccess()
+  } catch (error) {
+    callbacks.onError(
+      error instanceof Error
+        ? error.message
+        : 'Nie udalo sie usunac cwiczenia.',
+    )
+  }
 }

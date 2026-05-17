@@ -221,6 +221,7 @@ Resolved MVP product decisions:
 - Public/self-service account creation always creates a trainee account. Coach/admin roles are assigned manually in the database for now; do not expose a role selector in signup UI or trust a client-provided signup role.
 - Exercise videos are links only for MVP.
 - Exercise photos and optional media fields should not block exercise creation in MVP.
+- Program routines use a flexible ordered list for MVP. Do not build week/day scheduling unless the programmer asks to promote that model.
 - Detailed feature specs usually live beside the owning feature/page slice; keep `FEATURES.md` compact and strategic. Use `docs/features/` only when explicitly requested as a central planning area.
 
 <!-- convex-ai-start -->

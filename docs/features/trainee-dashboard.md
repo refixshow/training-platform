@@ -314,5 +314,5 @@ Use Recharts for trend/chart sections once real data exists. Keep chart componen
 - Decide where bodyweight is stored and which source the dashboard uses first.
 - Decide whether progress photos are visible to coaches by default.
 - Decide activity map style: calendar intensity, completion dots, or both.
-- Decide current program/current routine selection rules after scheduling mode is finalized.
+- Decide current program/current routine selection rules for flexible ordered programs.
 - Coach dashboard/statistics should be documented separately because density, filters, and permissions differ.

@@ -20,7 +20,7 @@ export const getOverview = query({
     const now = Date.now()
     const week = getWeekRange(now)
     const activityRangeStart = startOfDay(now - (MAX_ACTIVITY_DAYS - 1) * dayMs())
-    const bodyweightRangeStart = startOfDay(now - 90 * dayMs())
+    const bodyweightRangeStart = startOfDay(now - 180 * dayMs())
 
     const [currentProgram, weeklyResults, recentResults, activities, bodyweight, photos] =
       await Promise.all([
@@ -179,19 +179,21 @@ async function getBodyweightEntries(
   end: number,
 ) {
   const entries = await ctx.db
-    .query('bodyweightEntries')
-    .withIndex('by_trainee_and_created_at', (q) =>
-      q.eq('traineeId', traineeId).gte('createdAt', start).lte('createdAt', end),
+    .query('bodyMeasurements')
+    .withIndex('by_trainee_and_captured_at', (q) =>
+      q.eq('traineeId', traineeId).gte('capturedAt', start).lte('capturedAt', end),
     )
     .order('desc')
-    .take(MAX_BODYWEIGHT_POINTS)
+    .take(MAX_BODYWEIGHT_POINTS * 4)
 
   return entries
-    .sort((a, b) => a.createdAt - b.createdAt)
+    .filter((entry) => entry.bodyWeightKg !== undefined)
+    .sort((a, b) => a.capturedAt - b.capturedAt)
+    .slice(-MAX_BODYWEIGHT_POINTS)
     .map((entry) => ({
       _id: entry._id,
-      createdAt: entry.createdAt,
-      valueKg: entry.valueKg,
+      createdAt: entry.capturedAt,
+      valueKg: entry.bodyWeightKg as number,
     }))
 }
 

@@ -5,6 +5,7 @@ import { v } from 'convex/values'
 import {
   exerciseEquipmentValidator,
   exerciseTypeValidator,
+  muscleGroupValidator,
 } from './validators'
 
 export default defineSchema({
@@ -18,13 +19,32 @@ export default defineSchema({
   })
     .index('by_trainee', ['traineeId'])
     .index('by_trainee_and_created_at', ['traineeId', 'createdAt']),
-  bodyweightEntries: defineTable({
+  bodyMeasurements: defineTable({
+    abdomenCm: v.optional(v.number()),
+    bodyFatPercent: v.optional(v.number()),
+    bodyWeightKg: v.optional(v.number()),
+    capturedAt: v.number(),
+    chestCm: v.optional(v.number()),
     createdAt: v.number(),
+    hipsCm: v.optional(v.number()),
+    leftBicepCm: v.optional(v.number()),
+    leftCalfCm: v.optional(v.number()),
+    leftForearmCm: v.optional(v.number()),
+    leftThighCm: v.optional(v.number()),
+    neckCm: v.optional(v.number()),
+    note: v.optional(v.string()),
+    photoStorageId: v.optional(v.id('_storage')),
+    rightBicepCm: v.optional(v.number()),
+    rightCalfCm: v.optional(v.number()),
+    rightForearmCm: v.optional(v.number()),
+    rightThighCm: v.optional(v.number()),
+    shoulderCm: v.optional(v.number()),
     traineeId: v.id('users'),
-    valueKg: v.number(),
+    updatedAt: v.optional(v.number()),
+    waistCm: v.optional(v.number()),
   })
     .index('by_trainee', ['traineeId'])
-    .index('by_trainee_and_created_at', ['traineeId', 'createdAt']),
+    .index('by_trainee_and_captured_at', ['traineeId', 'capturedAt']),
   clientInvites: defineTable({
     acceptedAt: v.optional(v.number()),
     acceptedUserId: v.optional(v.id('users')),
@@ -52,24 +72,16 @@ export default defineSchema({
     instructions: v.array(v.string()),
     name: v.string(),
     photoStorageId: v.optional(v.id('_storage')),
-    primaryMuscleGroupId: v.id('muscleGroups'),
-    secondaryMuscleGroupIds: v.array(v.id('muscleGroups')),
+    primaryMuscleGroup: muscleGroupValidator,
+    secondaryMuscleGroups: v.array(muscleGroupValidator),
     type: exerciseTypeValidator,
     updatedAt: v.optional(v.number()),
     videoUrl: v.optional(v.string()),
   })
     .index('by_name', ['name'])
-    .index('by_primary_muscle_group', ['primaryMuscleGroupId'])
+    .index('by_equipment', ['equipment'])
+    .index('by_primary_muscle_group', ['primaryMuscleGroup'])
     .index('by_type', ['type']),
-  muscleGroups: defineTable({
-    createdAt: v.optional(v.number()),
-    name: v.string(),
-    normalizedName: v.optional(v.string()),
-    sortOrder: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-  })
-    .index('by_name', ['name'])
-    .index('by_normalized_name', ['normalizedName']),
   programAssignments: defineTable({
     assignedAt: v.number(),
     coachId: v.id('users'),
@@ -161,6 +173,7 @@ export default defineSchema({
     weightKg: v.optional(v.number()),
   })
     .index('by_draft', ['draftId'])
+    .index('by_exercise', ['exerciseId'])
     .index('by_draft_and_routine_exercise_block_and_set_index', [
       'draftId',
       'routineExerciseBlockId',
